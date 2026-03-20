@@ -1,0 +1,45 @@
+# Environment variables (contains secrets!)
+.env
+
+# Manual papers (personal data)
+manual_papers.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# PDF cache
+.paper_cache/
+
+# Output files
+report_preview.html
+email_preview.html
+*.log
+artifacts/
+llm_filter_debug/
+semantic_feedback.json
+semantic_feedback_queue.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local agent/workflow artifacts
+.codex/
+openspec/
+
+# Keep tests tracked
+!tests/
+!tests/*.py
+
+# OS
+.DS_Store
+Thumbs.db

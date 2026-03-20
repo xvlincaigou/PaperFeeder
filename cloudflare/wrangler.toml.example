@@ -1,0 +1,17 @@
+# Copy to wrangler.toml in this folder, then deploy from cloudflare/:
+#   cd cloudflare && npx wrangler deploy
+#
+# 1) Create D1:  npx wrangler d1 create paperfeeder-feedback
+# 2) Paste the printed database_id below.
+# 3) Apply schema: npx wrangler d1 execute paperfeeder-feedback --remote --file=d1_feedback_events.sql
+# 4) Set the signing secret (must match FEEDBACK_LINK_SIGNING_SECRET in PaperFeeder .env):
+#    npx wrangler secret put FEEDBACK_LINK_SIGNING_SECRET
+
+name = "paperfeeder-feedback"
+main = "feedback_worker.js"
+compatibility_date = "2024-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "paperfeeder-feedback"
+database_id = "REPLACE_WITH_YOUR_D1_UUID"

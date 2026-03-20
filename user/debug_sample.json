@@ -1,0 +1,14 @@
+{
+  "papers": [
+    {
+      "title": "Attention Is All You Need (debug placeholder — edit URL to a real arXiv link)",
+      "abstract": "Replace this file with user/debug_sample.json or edit paths. Used with: python main.py --debug-sample --dry-run",
+      "url": "https://arxiv.org/abs/1706.03762",
+      "source": "arxiv",
+      "arxiv_id": "1706.03762",
+      "authors": [{ "name": "Debug Author" }],
+      "semantic_paper_id": "204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+      "matched_keywords": ["debug"]
+    }
+  ]
+}

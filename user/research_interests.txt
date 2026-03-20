@@ -1,0 +1,15 @@
+I am focused on frontier AI research.
+
+Priorities:
+- Reasoning and test-time compute
+- Interpretability and AI safety
+- Scalable training/inference methods
+- Strong methodological novelty and reproducibility
+
+I prefer:
+- Paradigm-shifting ideas over incremental gains
+- Clear technical depth with concrete evidence
+
+I usually skip:
+- Pure product announcements
+- Narrow domain applications without generalizable methods

@@ -1,0 +1,241 @@
+# Daily Paper Assistant Configuration
+# Persona: Senior Principal Researcher at a Top-Tier AI Lab
+# Philosophy: Hunt for "The Next Big Thing", despise incremental work.
+
+# =============================================================================
+# arXiv categories to monitor
+# =============================================================================
+arxiv_categories:
+  - cs.LG   # Machine Learning
+  - cs.CL   # Computation and Language
+  # - cs.CV   # Computer Vision
+  - cs.AI   # Artificial Intelligence
+  # - stat.ML # Statistics - Machine Learning
+
+# =============================================================================
+# Keywords for filtering (matches title + abstract)
+# Strategy: Tier 1 = Precision Strikes, Tier 2 = Wide Net for Big News
+# =============================================================================
+keywords:
+  # --- Tier 1: Precision Strikes (高精度核心词，直接命中前沿) ---
+  - Reasoning
+  - hierarchical reasoning
+  - mathematical reasoning
+  - chain of thought
+  - latent reasoning          # Reasoning in latent space, not token space
+  - mechanistic interpretability  # Understanding what's inside the black box
+  - test-time compute         # Scaling inference, not just training
+  - inference scaling         # Related to test-time compute
+  - test time training
+  - formal language reasoning
+  - verifiable coding agent
+  - AI safety
+  - alignment
+  - self-evolution
+  - self-play
+  
+  # --- Tier 2: Wide Net (泛化词，捕捉跨界大新闻，需配合 exclude 过滤噪音) ---
+  - LLM
+  - Large Language Model
+  # - flow matching             # Next-gen generative paradigm
+  - Scaling Law
+  - Alignment
+  - Foundation Model
+
+# =============================================================================
+# Exclude Keywords (严格过滤，防止 Tier 2 词带来噪音)
+# =============================================================================
+exclude_keywords:
+  # Application domains we don't care about
+  - medical
+  - biomedical
+  - clinical
+  - healthcare
+  - diagnosis
+  - pathology
+  - physicis
+  - neuroscience
+  
+  # Modalities outside our focus
+  - 3D
+  - 4D
+  - video generation
+  - video understanding
+  - audio
+  - speech
+  - music
+  - point cloud
+  - mesh
+  
+  # Hardware / Systems (not our lane)
+  - hardware
+  - fpga
+  - accelerator
+  - compiler
+  - inference engine
+  
+
+# =============================================================================
+# Research Interests (核心人设 - 决定 LLM 的品味和筛选标准)
+# =============================================================================
+research_interests: |
+  You are a Senior Principal Researcher at a frontier AI lab (OpenAI/DeepMind/Anthropic caliber).
+  Your job is to screen papers for your team. You are EXTREMELY selective.
+  
+  ## What You're Hunting For: "The Next Big Thing"
+  
+  1. **Paradigm Shifts**: Papers that challenge existing dogmas, reveal counter-intuitive findings, 
+     or propose fundamentally new ways of thinking.
+  
+  2. **First-Principles Elegance**: Work with strong mathematical grounding, surprising simplicity, 
+     or beautiful unification of disparate ideas. You appreciate when someone removes complexity 
+     rather than adding it.
+
+  3. **Scaling Insights**: Papers that verify, challenge, or extend Scaling Laws. 
+     You care about what actually works at scale, not toy experiments.
+  
+  
+  ## Specific Technical Interests
+
+  - **AI Safety & Alignment**: 
+    - Mechanistic Interpretability, transparency, Scalable Oversight, Weak-to-Strong Generalization.
+    - AI safety with formal verification like Dafny or Lean.
+    - NOT interested in simple prompt-based jailbreaks.
+  - **Mechanistic Reasoning Circuits**:
+    - Circuit-level interpretability for CoT reasoning: attribution graphs, causal tracing, and sparse subnetwork extraction.
+    - Reasoning verification via deterministic circuit fingerprints that detect genuine reasoning vs shortcut behavior.
+    - Data-centric reasoning optimization: post-training data selection/filtering and skill-guided synthesis across pre-train, mid-train, and RL.
+  - **Reasoning & System 2**: 
+    - Formal language reasoning: theorem proving, symbolic manipulation, code generation using the singal from the formal verifier.
+    - Hierarchical Reasoning, Mathematical Reasoning, Chain of Thought, Latent Reasoning.
+    - Test time training, meta-learning, and fast adaptation. Especially in-context adaptation and learning.
+    - Self-evolution and self-play for continual improvement without human data.
+
+  ## What You DESPISE (Instant Pass)
+  
+  - **Resource Dumps**: Pure benchmarks or datasets without deep analysis of scaling laws or emergent capabilities. (Skip unless it reveals a major model failure mode).
+  - **Incremental SOTA Chasing**: "We beat the baseline by 0.3%" via hyperparameter tuning or "Alchemy" (random architectural tweaks).
+  - **Prompt Engineering as Research**: Simple prompt templates are not research. Only interested if it reveals internal mechanisms (like CoT).
+  - **"X applied to Y"**: Direct applications (e.g., LLM for Law/Finance) with no novel algorithmic contribution.
+  - **AI for Science/Bio**: Instant pass on protein folding, material science, or physics simulations UNLESS they propose a general-purpose ML advance (e.g., a new flow matching objective).
+  
+
+# =============================================================================
+# Filtering settings
+# =============================================================================
+llm_filter_enabled: true     # Enable LLM-based filtering
+llm_filter_threshold: 6      # Use LLM filter if keyword-filtered papers > N
+max_papers: 10                # Maximum papers in final report (slightly higher for flexibility)
+
+# =============================================================================
+# PDF Multimodal Input
+# =============================================================================
+extract_fulltext: true       # Use PDF multimodal input (more efficient)
+fulltext_top_n: 3            # Deprecated, kept for compatibility
+pdf_max_pages: 15            # Max PDF pages to extract (0 = all)
+
+# =============================================================================
+# Manual paper source
+# =============================================================================
+manual_source_enabled: false
+manual_source_path: "manual_papers.json"
+
+# =============================================================================
+# Semantic Scholar recommendation source
+# =============================================================================
+# Uses seed-based recommendations with optional API key.
+# If API key is absent, unauthenticated requests are still attempted.
+semantic_scholar_enabled: true
+semantic_scholar_max_results: 50
+semantic_scholar_seeds_path: "state/semantic/seeds.json"
+semantic_memory_enabled: true
+semantic_memory_path: "state/semantic/memory.json"
+semantic_seen_ttl_days: 30
+semantic_memory_max_ids: 5000
+
+# =============================================================================
+# Blog Source Settings (NEW!)
+# =============================================================================
+# Enable blog fetching from RSS feeds
+blogs_enabled: true
+
+# How many days back to look for blog posts
+blog_days_back: 2
+
+# Which blogs to enable
+# If not specified (null), uses all priority blogs by default
+# Available keys: openai, anthropic, deepmind, google_ai, meta_ai,
+#                 bair, stanford_ai, karpathy, lilianweng, colah,
+#                 jay_alammar, distill, fastai, the_gradient,
+#                 nvidia_ai, microsoft_research, aws_ml,
+#                 alignment_forum, lesswrong_ai
+enabled_blogs:
+  # === 龙头实验室 & 工业界巨头 (Priority - 直接进入报告) ===
+  - openai            # OpenAI News & Research
+  - anthropic         # Anthropic News (注意: 需配合 User-Agent 抓取)
+  - deepmind          # Google DeepMind Blog
+  - google_ai         # Google AI (Technology/AI 频道)
+  - meta_research     # Meta Research (原 Meta AI Blog 的硬核替代源)
+  - huggingface       # Hugging Face Blog (开源 SOTA 动态)
+
+  # === 顶级学术实验室 (Priority) ===
+  - bair              # Berkeley AI Research (BAIR) Blog
+
+  # === 大佬个人博客 (Priority - 深度技术洞察) ===
+  - karpathy          # Andrej Karpathy (LLM 训练与思考)
+  - lilianweng        # Lil'Log (Lilian Weng @ OpenAI - 极其详尽的综述)
+  - colah             # Christopher Olah (模型可解释性/机械解释性)
+
+  # === 其他优质来源 (参与筛选流程 - 仅输出高质量摘要) ===
+  - nvidia_research   # NVIDIA Research (替代 NVIDIA Blog，关注底层论文)
+  - alignment_forum   # AI Alignment Forum (对齐领域深度讨论)
+  - lesswrong_ai      # LessWrong AI Tag (跨学科 AI 思考)
+  - sakana_ai         # Sakana AI Blog
+
+
+# Custom blogs (add your own RSS feeds)
+# Format: key -> {name, feed_url, website, priority}
+# priority: true = 直接进入报告；false = 参与筛选流程
+custom_blogs:
+  sakana_ai:
+    name: "Sakana AI Blog"
+    feed_url: "https://sakana.ai/feed.xml"
+    website: "https://sakana.ai/blog/"
+    priority: true
+
+  # Example: Uncomment to add your own blogs
+  # my_favorite_blog:
+  #   name: "My Favorite AI Blog"
+  #   feed_url: "https://example.com/feed.xml"
+  #   website: "https://example.com/blog"
+  #   priority: true
+  
+  # Example: Company internal blog
+  # company_research:
+  #   name: "Company Research Blog"
+  #   feed_url: "https://company.com/research/rss"
+  #   priority: false
+
+# =============================================================================
+# Pre-configured Priority Blogs Reference
+# =============================================================================
+# These blogs are marked as "priority" by default and skip all filtering:
+#
+# AI Labs:
+#   openai      - https://openai.com/news/rss.xml
+#   anthropic   - https://www.anthropic.com/rss.xml
+#   deepmind    - https://deepmind.google/blog/rss.xml
+#   google_ai   - https://blog.google/technology/ai/rss/
+#   meta_ai     - https://ai.meta.com/blog/rss/
+#
+# Academic Labs:
+#   bair        - https://bair.berkeley.edu/blog/feed.xml
+#
+# Individual Researchers:
+#   karpathy    - https://karpathy.bearblog.dev/feed/
+#   lilianweng  - https://lilianweng.github.io/index.xml
+#   colah       - https://colah.github.io/rss.xml
+#   distill     - https://distill.pub/rss.xml
+#
+# Priority blogs go DIRECTLY to the report without filtering!
+# This ensures you never miss important updates from top AI labs.

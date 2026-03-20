@@ -1,0 +1,20 @@
+# User-local overrides (safe to edit after clone)
+# Any key here overrides config.yaml
+
+# Core source toggles
+papers_enabled: true
+blogs_enabled: true
+semantic_scholar_enabled: true
+
+# Fetch windows
+blog_days_back: 7
+semantic_scholar_max_results: 20
+
+# Optional: choose specific blogs (or keep null for defaults)
+enabled_blogs: null
+
+# Optional: point to your own files
+user_research_profile_path: "user/research_interests.txt"
+user_prompt_addon_path: "user/prompt_addon.txt"
+
+feedback_email_attachments: none
