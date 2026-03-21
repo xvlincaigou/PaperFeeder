@@ -5,11 +5,13 @@
 
 > A research intelligence agent pipeline for daily paper and blog triage to your email inbox.
 
+**PaperFeeder is email-first.** The digest email is the primary product surface; the web viewer, manifests, and feedback pipeline exist to support that inbox workflow rather than replace it.
+
 **中文说明：** [README.zh-CN.md](README.zh-CN.md)
 
 ## Why PaperFeeder
 
-PaperFeeder is a lightweight research intelligence system for people who do not want to manually skim hundreds of links every day.
+PaperFeeder is a lightweight research intelligence system for people who do not want to manually skim hundreds of links every day, and who want the final output delivered as a high-signal email digest rather than another dashboard to check.
 
 It is built for a simple outcome:
 
@@ -19,6 +21,8 @@ It is built for a simple outcome:
 4. remember what has already been shown recently
 5. improve future recommendations from explicit feedback
 6. run either locally or as a remote scheduled service
+
+The key product choice is deliberate: email is not a notification layer on top of the system. Email is the default delivery surface for the research brief itself.
 
 What makes it more than a paper-summary script is the layering:
 
@@ -109,7 +113,7 @@ Key files:
 | Component | Required | Why |
 |----------|----------|-----|
 | LLM API | Yes | digest synthesis and, if enabled, LLM filtering |
-| Email provider | Optional for local preview, required for real email delivery | send digest emails |
+| Email provider | Optional for local preview, required for real use | deliver the digest in its intended email-first format |
 | Tavily API | Optional but recommended | external signal enrichment |
 | Semantic Scholar API | Strongly recommended | better ID resolution for personalization and feedback links |
 | Cloudflare Worker + D1 | Optional | one-click remote feedback loop |
@@ -130,6 +134,8 @@ Then:
 5. edit files under `user/` for interests, keywords, exclusions, categories, and prompt additions
 
 Local `.env` is for local development and local testing. GitHub Actions deployments should use GitHub Secrets and Variables instead.
+
+If you only remember one setup principle, make it this: the primary user experience is the email digest. Local preview is for iteration; production setup should be optimized around reliable inbox delivery.
 
 ### User-Editable Files
 
@@ -195,7 +201,7 @@ python scripts/semantic_feedback_apply.py --manifest-file artifacts/run_feedback
 
 ## Remote Deployment With GitHub Actions
 
-If you want PaperFeeder to behave like a remote service, GitHub Actions is the main deployment path.
+If you want PaperFeeder to behave like a remote service, GitHub Actions is the main deployment path. In practice, this is how you turn it into an automated email brief that lands in your inbox every morning.
 
 ### Workflow Roles
 
