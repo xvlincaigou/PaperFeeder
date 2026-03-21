@@ -1,0 +1,5 @@
+# arXiv categories to monitor
+
+cs.LG
+cs.CL
+cs.AI

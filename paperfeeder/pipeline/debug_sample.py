@@ -14,12 +14,12 @@ from typing import Any, List, Optional
 
 from paperfeeder.models import Paper
 
-DEFAULT_DEBUG_SAMPLE_PATH = "user/debug_sample.json"
-FALLBACK_DEBUG_SAMPLE_PATH = "user/debug_sample.example.json"
+DEFAULT_DEBUG_SAMPLE_PATH = "tests/debug_sample.json"
+FALLBACK_DEBUG_SAMPLE_PATH = "tests/debug_sample.example.json"
 
 
 def resolve_debug_sample_path(path: Optional[str] = None) -> Path:
-    """Prefer explicit path, then user/debug_sample.json, then bundled example."""
+    """Prefer explicit path, then tests/debug_sample.json, then bundled example."""
     if path:
         p = Path(path)
         if not p.is_file():
@@ -33,8 +33,8 @@ def resolve_debug_sample_path(path: Optional[str] = None) -> Path:
         print(f"   Debug sample: {primary} not found, using {alt} (copy to {primary} to customize)")
         return alt.resolve()
     raise FileNotFoundError(
-        f"Debug sample file not found. Create {DEFAULT_DEBUG_SAMPLE_PATH} or keep "
-        f"{FALLBACK_DEBUG_SAMPLE_PATH} in the repo."
+        f"Debug sample file not found. Copy {FALLBACK_DEBUG_SAMPLE_PATH} to "
+        f"{DEFAULT_DEBUG_SAMPLE_PATH} or pass --debug-sample-path."
     )
 
 

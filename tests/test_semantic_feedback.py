@@ -19,6 +19,7 @@ from paperfeeder.semantic.feedback import (
     ingest_feedback_token,
     inject_feedback_actions_into_report,
     inject_feedback_entry_link,
+    make_email_safe_report_html,
     publish_feedback_run_to_d1,
     verify_feedback_token,
 )
@@ -500,6 +501,19 @@ class SemanticFeedbackTests(unittest.TestCase):
         self.assertIn("/run?run_id=run-123", updated)
         self.assertIn("Open Feedback Web Viewer", updated)
         self.assertNotIn("pf-feedback-actions", updated)
+
+    def test_make_email_safe_report_html_strips_scripts_but_keeps_feedback_links(self) -> None:
+        html = (
+            '<html><head><script src="https://cdn.example.com/math.js"></script></head>'
+            '<body><a class="pf-feedback-btn positive" href="https://example.com/fb">👍 Like</a>'
+            '<script>console.log("feedback")</script></body></html>'
+        )
+
+        safe = make_email_safe_report_html(html)
+
+        self.assertNotIn("<script", safe.lower())
+        self.assertIn("pf-feedback-btn", safe)
+        self.assertIn("https://example.com/fb", safe)
 
     def test_manifest_skips_action_links_without_semantic_id(self) -> None:
         with tempfile.TemporaryDirectory() as td:

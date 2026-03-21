@@ -1,0 +1,24 @@
+# Active exclusion profile for this workspace.
+
+medical
+biomedical
+clinical
+healthcare
+diagnosis
+pathology
+physics
+neuroscience
+3D
+4D
+video generation
+video understanding
+audio
+speech
+music
+point cloud
+mesh
+hardware
+fpga
+accelerator
+compiler
+inference engine

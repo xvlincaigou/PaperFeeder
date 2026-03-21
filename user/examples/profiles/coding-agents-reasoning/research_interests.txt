@@ -1,0 +1,11 @@
+You care about models that reason, use tools, and reliably solve coding or formal tasks.
+
+Prefer:
+- Coding agents with strong evaluation design
+- Formal verification, theorem proving, program synthesis
+- Long-horizon reasoning and tool use
+- Execution-grounded or verifier-grounded learning loops
+
+Avoid:
+- Generic benchmark wrappers without a systems or algorithmic idea
+- Narrow code completion tweaks without reliability evidence

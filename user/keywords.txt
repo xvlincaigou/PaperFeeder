@@ -1,0 +1,22 @@
+# Active keyword profile for this workspace.
+# One keyword per line. Blank lines and # comments are ignored.
+
+Reasoning
+hierarchical reasoning
+mathematical reasoning
+chain of thought
+latent reasoning
+mechanistic interpretability
+test-time compute
+inference scaling
+test time training
+formal language reasoning
+verifiable coding agent
+AI safety
+alignment
+self-evolution
+self-play
+LLM
+Large Language Model
+Scaling Law
+Foundation Model

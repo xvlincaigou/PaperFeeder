@@ -20,6 +20,7 @@ from paperfeeder.semantic import (
     get_run_id_from_manifest,
     inject_feedback_actions_into_report,
     inject_feedback_entry_link,
+    make_email_safe_report_html,
     memory_keys_for_paper,
     publish_feedback_run_to_d1,
 )
@@ -284,6 +285,7 @@ async def summarize_papers(papers: list[Paper], config: Config, priority_blogs: 
         model=config.llm_model,
         research_interests=config.research_interests,
         prompt_addon=getattr(config, "prompt_addon", ""),
+        prompt_language=getattr(config, "prompt_language", "zh-CN"),
         debug_save_pdfs=getattr(config, "debug_save_pdfs", False),
         debug_pdf_dir=getattr(config, "debug_pdf_dir", "debug_pdfs"),
         pdf_max_pages=getattr(config, "pdf_max_pages", 10),
@@ -461,7 +463,7 @@ async def run_pipeline(
                 # Same HTML as web/D1: per-paper 👍/👎 links must appear in email too (many clients ignore <script>).
                 web_report = inject_feedback_actions_into_report(report, str(manifest_path))
                 web_report = append_feedback_fallback_strip(web_report, str(manifest_path))
-                email_report = web_report
+                email_report = make_email_safe_report_html(web_report)
                 run_id = get_run_id_from_manifest(str(manifest_path))
                 run_view_url = build_feedback_run_view_url(getattr(config, "feedback_endpoint_base_url", ""), run_id)
                 show_viewer = getattr(config, "feedback_web_viewer_link_in_email", True)
@@ -470,7 +472,7 @@ async def run_pipeline(
                 elif show_viewer is not True and show_viewer is not False:
                     show_viewer = bool(show_viewer)
                 if run_view_url and show_viewer:
-                    email_report = inject_feedback_entry_link(web_report, run_view_url)
+                    email_report = inject_feedback_entry_link(email_report, run_view_url)
                 try:
                     publish_feedback_run_to_d1(
                         manifest_path=str(manifest_path),
@@ -538,12 +540,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--debug-sample",
         action="store_true",
-        help="Load paper(s) from user/debug_sample.json (or --debug-sample-path); skip fetch, filters, enrichment",
+        help="Load paper(s) from tests/debug_sample.json (or --debug-sample-path); skip fetch, filters, enrichment",
     )
     parser.add_argument(
         "--debug-sample-path",
         default=None,
-        help="JSON file for --debug-sample (default: user/debug_sample.json, else user/debug_sample.example.json)",
+        help="JSON file for --debug-sample (default: tests/debug_sample.json, else tests/debug_sample.example.json)",
     )
     parser.add_argument(
         "--debug-minimal-report",

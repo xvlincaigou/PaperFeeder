@@ -5,9 +5,9 @@ permissions:
 
 on:
   # Periodically merge D1 pending 👍/👎 into seeds on branch memory-state (or SEED_STATE_BRANCH).
-  # Edit the cron if you want a different cadence (UTC).
+  # Default: every 3 days at 03:30 UTC. Edit the cron if you want a different cadence/time zone.
   schedule:
-    - cron: "30 */6 * * *"
+    - cron: "30 3 */3 * *"
   workflow_dispatch:
     inputs:
       run_id:

@@ -8,6 +8,7 @@ from datetime import datetime
 
 from paperfeeder.models import Paper
 from paperfeeder.chat import LLMClient
+from paperfeeder.pipeline.prompt_templates import get_summary_language_pack
 
 
 class PaperSummarizer:
@@ -20,6 +21,7 @@ class PaperSummarizer:
         model: str = "gpt-4o-mini",
         research_interests: str = "",
         prompt_addon: str = "",
+        prompt_language: str = "zh-CN",
         debug_save_pdfs: bool = False,
         debug_pdf_dir: str = "debug_pdfs",
         pdf_max_pages: int = 10,
@@ -34,6 +36,7 @@ class PaperSummarizer:
         )
         self.research_interests = research_interests
         self.prompt_addon = prompt_addon.strip()
+        self.language_pack = get_summary_language_pack(prompt_language)
 
     def _build_prompt(
         self,
@@ -91,68 +94,42 @@ class PaperSummarizer:
             if failed_pdf_set:
                 pdf_context += f" ({len(failed_pdf_set)} failed, using abstract only)"
 
-        system_prompt = """You are a Senior Principal Researcher at a top-tier AI lab (OpenAI/DeepMind/Anthropic caliber), screening papers AND blog posts for your research team.
-
-## Your Philosophy
-- You DESPISE incremental work. "Beat SOTA by 0.2%" makes you yawn.
-- You hunt for Paradigm Shifts, Counter-intuitive Findings, and Mathematical Elegance.
-- You value First Principles Thinking over empirical bag-of-tricks.
-- You care about what scales and what actually matters.
-
-## Your Evaluation Lens
-For each paper AND blog post, you instinctively assess:
-- Surprise: Does it challenge my priors? Is there an "aha" moment?
-- Rigor: Is the content substantive, or is it just marketing fluff?
-- Impact: Could this change how we build systems? Or is it a footnote?
-- Relevance: Is it actually about AI/ML research, or off-topic?
-
-## Your Communication Style
-- 犀利、专业、不废话
-- 中英文夹杂
-- 直接给判断，不要模棱两可
-
-## CRITICAL: Blog Post Filtering
-- NOT all blog posts are worth reading!
-- Filter OUT: marketing content, product announcements, off-topic posts
-- Keep ONLY: technical deep dives, year-in-review posts, research insights, methodology discussions
-- A blog post from a famous source can still be SKIP-worthy if it's not about AI research"""
+        system_prompt = self.language_pack.system_prompt
 
         if self.prompt_addon:
-            system_prompt += f"\n\n## Additional User Guidance\n{self.prompt_addon}"
+            system_prompt += f"\n\n{self.language_pack.additional_guidance_heading}\n{self.prompt_addon}"
 
         papers_section = ""
         if papers:
             papers_section = f"""
-## Today's Paper Pool ({len(papers)} papers)
+    {self.language_pack.papers_section_heading.format(count=len(papers))}
 {chr(10).join(papers_info)}{pdf_context}
 """
 
         blogs_section = ""
         if blog_posts:
             blogs_section = f"""
-## Blog Posts from Priority Sources ({len(blog_posts)} posts)
-These need filtering too.
+    {self.language_pack.blogs_section_heading.format(count=len(blog_posts))}
+    {self.language_pack.blogs_section_intro}
 
 {chr(10).join(blog_info)}
 """
 
-        user_prompt = f"""## My Research Interests
+        requirements = "\n".join(
+            f"{i}. {line}" for i, line in enumerate(self.language_pack.task_requirements, 1)
+        )
+
+        user_prompt = f"""{self.language_pack.my_research_interests_heading}
 {self.research_interests}
 {blogs_section}{papers_section}
 ---
 
-## Your Task
+    {self.language_pack.task_heading}
 
-请以 Senior Principal Researcher 的视角审阅这批内容，输出 clean HTML（不要 html/head/body 标签）。
+    {self.language_pack.task_intro}
 
 Critical requirements:
-1. 博客也要筛选，不是所有博客都值得读。
-2. 宁缺毋滥。
-3. 具体、可执行。
-4. 深度分析要有干货。
-5. **视觉：必须浅色清爽** — 正文区块背景只用 #ffffff 或 #f8fafc；文字用深色 #1e293b / #334155。**禁止**黑底/深灰底配浅色字、禁止整段「深色卡片」风格；链接用蓝色即可。
-6. 每个条目请保留可点击的论文/博客 **原始 URL**（与上方列表中的 URL 一致），用 `<a href="...">` 输出，便于反馈按钮匹配。
-7. **版式宽度**：不要在外层再包 `<div style="max-width:...">`、居中窄栏或多层大 `padding`/`margin`；宿主页面已有 `.content` 与整页宽度约束。请用 `<h2>`、`<p>`、`<section>` 等**平铺**，避免「大边距套小边距」把正文挤成细条。
+    {requirements}
 """
 
         return {"system": system_prompt, "user": user_prompt}
@@ -164,7 +141,7 @@ Critical requirements:
         blog_posts: list[Paper] = None,
     ) -> str:
         if not papers and not blog_posts:
-            return self._wrap_html("<p>No papers or blog posts to review today.</p>", [], blog_posts)
+            return self._wrap_html(self.language_pack.html_empty_state, [], blog_posts)
 
         actual_papers = []
         actual_blogs = list(blog_posts) if blog_posts else []
@@ -235,26 +212,20 @@ Critical requirements:
             return self._wrap_html(error_msg, actual_papers, actual_blogs)
 
     def _wrap_html(self, content: str, papers: list[Paper], blog_posts: list[Paper] = None) -> str:
+        pack = self.language_pack
         today = datetime.now()
-        today_cn = today.strftime("%Y年%m月%d日")
-        weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-        weekday = weekdays[today.weekday()]
+        today_label = today.strftime(pack.date_format)
+        weekday = pack.weekdays[today.weekday()]
         paper_count = len([paper for paper in papers if not getattr(paper, "is_blog", False)])
         blog_count = len(blog_posts) if blog_posts else 0
-
-        if blog_count > 0 and paper_count > 0:
-            meta_str = f"{paper_count} papers + {blog_count} blogs reviewed"
-        elif blog_count > 0:
-            meta_str = f"{blog_count} blogs reviewed"
-        else:
-            meta_str = f"{paper_count} papers reviewed"
+        meta_str = pack.reviewed_summary(paper_count, blog_count)
 
         return f"""<!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Paper Digest - {today.strftime("%Y-%m-%d")}</title>
+        <title>{pack.html_title} - {today.strftime('%Y-%m-%d')}</title>
         <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
         <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
         <style>
@@ -300,9 +271,9 @@ Critical requirements:
     <body>
         <div class="container">
             <div class="header">
-                <h1>Paper Digest</h1>
-                <div class="meta">{today_cn} {weekday} · {meta_str}</div>
-                <div class="persona">Curated by PaperFeeder · No fluff, no hype</div>
+                <h1>{pack.header_title}</h1>
+                <div class="meta">{today_label} {weekday} · {meta_str}</div>
+                <div class="persona">{pack.persona_label}</div>
             </div>
             <div class="content">
                 {content}
@@ -319,7 +290,7 @@ Critical requirements:
         for paper in papers:
             if hasattr(paper, "matched_keywords"):
                 keywords.update(paper.matched_keywords)
-        return ", ".join(sorted(keywords)[:8]) if keywords else "AI Research"
+        return ", ".join(sorted(keywords)[:8]) if keywords else self.language_pack.footer_fallback
 
 
 ClaudeSummarizer = PaperSummarizer

@@ -4,9 +4,12 @@ from dataclasses import dataclass
 
 
 DEFAULT_CONFIG_PATH = "config.yaml"
-DEFAULT_USER_SETTINGS_PATH = "user/settings.yaml"
+DEFAULT_USER_BLOG_SETTINGS_PATH = "user/blogs.yaml"
 DEFAULT_RESEARCH_PROFILE_PATH = "user/research_interests.txt"
 DEFAULT_PROMPT_ADDON_PATH = "user/prompt_addon.txt"
+DEFAULT_USER_ARXIV_CATEGORIES_PATH = "user/arxiv_categories.txt"
+DEFAULT_USER_KEYWORDS_PATH = "user/keywords.txt"
+DEFAULT_USER_EXCLUDE_KEYWORDS_PATH = "user/exclude_keywords.txt"
 DEFAULT_SEMANTIC_SEEDS_PATH = "state/semantic/seeds.json"
 DEFAULT_SEMANTIC_MEMORY_PATH = "state/semantic/memory.json"
 DEFAULT_ARTIFACTS_DIR = "artifacts"
@@ -17,9 +20,12 @@ DEFAULT_FILTER_DEBUG_DIR = "llm_filter_debug"
 @dataclass(frozen=True)
 class ProjectPaths:
     config: str = DEFAULT_CONFIG_PATH
-    user_settings: str = DEFAULT_USER_SETTINGS_PATH
+    blog_settings: str = DEFAULT_USER_BLOG_SETTINGS_PATH
     research_profile: str = DEFAULT_RESEARCH_PROFILE_PATH
     prompt_addon: str = DEFAULT_PROMPT_ADDON_PATH
+    arxiv_categories: str = DEFAULT_USER_ARXIV_CATEGORIES_PATH
+    keywords: str = DEFAULT_USER_KEYWORDS_PATH
+    exclude_keywords: str = DEFAULT_USER_EXCLUDE_KEYWORDS_PATH
     semantic_seeds: str = DEFAULT_SEMANTIC_SEEDS_PATH
     semantic_memory: str = DEFAULT_SEMANTIC_MEMORY_PATH
     artifacts_dir: str = DEFAULT_ARTIFACTS_DIR

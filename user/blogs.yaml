@@ -1,0 +1,17 @@
+# Blog selection and custom RSS feeds.
+# Edit this file if you want to tune source quality.
+
+enabled_blogs:
+  - openai
+  - anthropic
+  - deepmind
+  - google_ai
+  - meta_research
+  - huggingface
+  - bair
+  - karpathy
+  - lilianweng
+  - colah
+
+# Optional custom RSS feeds.
+custom_blogs: {}

@@ -1,0 +1,8 @@
+medical
+biomedical
+clinical
+video generation
+audio
+speech
+hardware
+compiler

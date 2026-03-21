@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,15 +33,95 @@ class FeedbackWebViewerFromYamlTests(unittest.TestCase):
     def test_quoted_false_string_in_yaml(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / "config.yaml"
-            missing_user = Path(tmp) / "no_user_settings.yaml"
             cfg.write_text(
-                f"user_settings_path: {missing_user.as_posix()}\n"
                 "feedback_web_viewer_link_in_email: 'false'\n"
                 "email_to: x@y.z\n",
                 encoding="utf-8",
             )
             c = Config.from_yaml(str(cfg))
             self.assertFalse(c.feedback_web_viewer_link_in_email)
+
+
+class UserPersonalizationFileTests(unittest.TestCase):
+    def test_user_list_files_override_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            user_dir = root / "user"
+            user_dir.mkdir()
+
+            cfg = root / "config.yaml"
+            cfg.write_text(
+                "keywords:\n"
+                "  - baseline keyword\n"
+                "exclude_keywords:\n"
+                "  - baseline exclude\n"
+                "arxiv_categories:\n"
+                "  - cs.CL\n",
+                encoding="utf-8",
+            )
+            (user_dir / "keywords.txt").write_text(
+                "reasoning\n"
+                "latent reasoning # inline comment\n"
+                "\n"
+                "# full line comment\n",
+                encoding="utf-8",
+            )
+            (user_dir / "exclude_keywords.txt").write_text(
+                "medical\n"
+                "robotics\n",
+                encoding="utf-8",
+            )
+            (user_dir / "arxiv_categories.txt").write_text(
+                "cs.LG\n"
+                "cs.AI\n",
+                encoding="utf-8",
+            )
+
+            cwd = Path.cwd()
+            try:
+                os.chdir(root)
+                loaded = Config.from_yaml(str(cfg))
+            finally:
+                os.chdir(cwd)
+
+            self.assertEqual(loaded.keywords, ["reasoning", "latent reasoning"])
+            self.assertEqual(loaded.exclude_keywords, ["medical", "robotics"])
+            self.assertEqual(loaded.arxiv_categories, ["cs.LG", "cs.AI"])
+
+    def test_user_blog_settings_file_overrides_blog_config(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            user_dir = root / "user"
+            user_dir.mkdir()
+            cfg = root / "config.yaml"
+            cfg.write_text(
+                "blogs_enabled: true\n"
+                "user_blog_settings_path: user/blogs.yaml\n",
+                encoding="utf-8",
+            )
+
+            (user_dir / "blogs.yaml").write_text(
+                "enabled_blogs:\n"
+                "  - openai\n"
+                "  - huggingface\n"
+                "custom_blogs:\n"
+                "  my_lab:\n"
+                "    name: My Lab Blog\n"
+                "    feed_url: https://example.com/feed.xml\n"
+                "    website: https://example.com/blog/\n"
+                "    priority: true\n",
+                encoding="utf-8",
+            )
+
+            cwd = Path.cwd()
+            try:
+                os.chdir(root)
+                loaded = Config.from_yaml(str(cfg))
+            finally:
+                os.chdir(cwd)
+
+            self.assertEqual(loaded.enabled_blogs, ["openai", "huggingface"])
+            self.assertEqual(loaded.custom_blogs["my_lab"]["website"], "https://example.com/blog/")
 
 
 class FeedbackEmailAttachmentPathsTests(unittest.TestCase):

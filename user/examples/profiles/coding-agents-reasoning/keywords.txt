@@ -1,0 +1,12 @@
+coding agent
+code generation
+program synthesis
+formal verification
+theorem proving
+tool use
+verifiable reasoning
+execution feedback
+test-time compute
+reasoning
+self-play
+agentic workflow

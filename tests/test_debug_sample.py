@@ -54,7 +54,7 @@ class DebugSampleTests(unittest.TestCase):
 
     def test_resolve_example_exists_in_repo(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        ex = root / "user" / "debug_sample.example.json"
+        ex = root / "tests" / "debug_sample.example.json"
         if not ex.is_file():
             self.skipTest("example file not in tree")
         p = resolve_debug_sample_path(str(ex))

@@ -1,0 +1,6 @@
+medical
+biomedical
+clinical
+weather forecasting
+finance
+law

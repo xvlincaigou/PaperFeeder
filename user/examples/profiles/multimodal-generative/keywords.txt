@@ -1,0 +1,11 @@
+multimodal model
+vision language model
+diffusion model
+flow matching
+representation learning
+self-supervised learning
+distillation
+data curation
+foundation model
+video understanding
+image generation

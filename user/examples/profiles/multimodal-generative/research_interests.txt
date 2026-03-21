@@ -1,0 +1,11 @@
+You follow major advances in generative and multimodal modeling, especially methods that might generalize beyond one benchmark.
+
+Prefer:
+- Core modeling advances in multimodal training
+- Representation learning across text, image, audio, or video
+- Efficient adaptation, distillation, and data curation for large generative systems
+- Evaluation that reveals scaling or transfer behavior
+
+Avoid:
+- Pure application demos
+- Narrow vertical pipelines without a reusable technique

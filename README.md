@@ -13,7 +13,7 @@ PaperFeeder/
 ├── cloudflare/           # Feedback worker and D1 schema
 ├── state/semantic/       # Persistent personalization state
 ├── artifacts/            # Per-run generated manifests/templates
-├── user/                 # User-editable settings and prompts
+├── user/                 # User-editable text profiles and prompt snippets
 ├── tests/                # Test suite
 ├── config.yaml           # Project defaults
 └── main.py               # Main digest entrypoint
@@ -51,7 +51,11 @@ bash scripts/bootstrap.sh
 source .venv/bin/activate
 ```
 
-Then fill in `.env`, and optionally adjust `user/settings.yaml`, `user/research_interests.txt`, and `user/prompt_addon.txt`.
+Then fill in `.env`, edit `config.yaml` for toggles and paths, edit `user/blogs.yaml` for blog sources, and edit files under `user/` for research preferences. The common user files are `user/blogs.yaml`, `user/research_interests.txt`, `user/keywords.txt`, `user/exclude_keywords.txt`, `user/arxiv_categories.txt`, and `user/prompt_addon.txt`.
+
+If you want the generated report prompt to be English-first instead of Chinese-first, set `prompt_language` in `config.yaml` to `en-US`.
+
+If you want a different starting point, look at the preset profiles under `user/examples/profiles/` and either copy the files you want into `user/`, or point `config.yaml` at a preset path.
 
 ## How To Run
 
@@ -64,7 +68,7 @@ python main.py --days 3
 
 `--dry-run` writes `report_preview.html` locally and may generate feedback files under `artifacts/`.
 
-**Lightweight debug (one paper, no crawl):** use a JSON fixture instead of fetching arXiv/HF/S2. Skips keyword+LLM filters and Tavily enrichment. **By default, `--debug-sample` does not call the main digest LLM** — it sends a small fixed HTML body (good for testing email, feedback, D1). Copy `user/debug_sample.example.json` to `user/debug_sample.json` and edit.
+**Lightweight debug (one paper, no crawl):** use a JSON fixture instead of fetching arXiv/HF/S2. Skips keyword+LLM filters and Tavily enrichment. **By default, `--debug-sample` does not call the main digest LLM** — it sends a small fixed HTML body (good for testing email, feedback, D1). Copy `tests/debug_sample.example.json` to `tests/debug_sample.json` and edit (or rely on the bundled example when no override exists).
 
 ```bash
 # Stub HTML only, no main digest LLM; local preview (omit --dry-run to send email)
@@ -106,7 +110,7 @@ python scripts/semantic_feedback_apply.py --manifest-file artifacts/run_feedback
 
 ## Configuration
 
-Defaults live in `config.yaml`. The semantic state paths are:
+The main configuration lives in `config.yaml`. Use it for toggles, fetch windows, and paths. Use `user/blogs.yaml` for blog selection and custom RSS feeds. Use other files under `user/` for research profile text, keywords, categories, and prompt additions. The semantic state paths are:
 
 ```yaml
 semantic_scholar_seeds_path: "state/semantic/seeds.json"
@@ -116,36 +120,94 @@ semantic_memory_path: "state/semantic/memory.json"
 Config precedence is:
 
 1. `config.yaml`
-2. `user/settings.yaml`
+2. `user/blogs.yaml`
 3. environment variables
-4. `user/research_interests.txt` and `user/prompt_addon.txt`
+4. `user/research_interests.txt`, `user/prompt_addon.txt`, `user/keywords.txt`, `user/exclude_keywords.txt`, and `user/arxiv_categories.txt`
 
-## Feedback Flow
+Each list file in `user/` uses one item per line. Blank lines and lines starting with `#` are ignored.
 
-1. `python main.py` generates a digest.
-2. The run may export manifest/template files into `artifacts/`.
-3. Feedback links point to the worker in `cloudflare/`.
-4. Reviewed feedback is applied back into `state/semantic/seeds.json`.
+## Preset Profiles
 
-**One-click in email (👍 / 👎):** set `FEEDBACK_ENDPOINT_BASE_URL` to your deployed worker base URL and `FEEDBACK_LINK_SIGNING_SECRET` to the same secret configured on the worker. Without both, the manifest has no signed URLs and the HTML will not show working feedback links. The outgoing email uses the same per-paper links as the web/D1 viewer (plain `GET` to `/feedback?t=...`; most mail clients ignore the optional in-email JavaScript).
+Preset starting points live under `user/examples/profiles/`:
 
-The **“Open Feedback Web Viewer”** banner is optional: it only adds a link to the browser copy at `/run?run_id=...` (useful if email layout breaks or you want to share the digest). Per-paper 👍/👎 do **not** depend on it. To hide the banner, set `FEEDBACK_WEB_VIEWER_LINK_IN_EMAIL=false` or `feedback_web_viewer_link_in_email: false` in `user/settings.yaml`. D1 upload and `/run` URLs still work if you open them manually.
+- `frontier-ai-lab`
+- `interpretability-alignment`
+- `coding-agents-reasoning`
+- `multimodal-generative`
 
-### Configure feedback (checklist)
+Each profile contains a `research_interests.txt`, `keywords.txt`, `exclude_keywords.txt`, and `arxiv_categories.txt`.
 
-Copy `.env.example` → `.env` and fill the variables below. Env vars override `config.yaml` / `user/settings.yaml` (see `paperfeeder/config/schema.py`).
+## Memory
 
-| What | Where to set | Notes |
-|------|----------------|------|
-| **Worker URL** | `.env` → `FEEDBACK_ENDPOINT_BASE_URL` | Example: `https://paperfeeder-feedback.your-subdomain.workers.dev` — **no trailing slash**. This is where signed links in the email point. |
-| **Signing secret** | `.env` → `FEEDBACK_LINK_SIGNING_SECRET` **and** Worker | Must be **identical**. On Worker: `cd cloudflare && cp wrangler.toml.example wrangler.toml` (edit `database_id`), then `npx wrangler secret put FEEDBACK_LINK_SIGNING_SECRET` and paste the same string. Used to mint and verify `t=` tokens. |
-| **D1 + Worker** | Cloudflare Dashboard or Wrangler | Worker code expects binding name **`DB`** (see `cloudflare/wrangler.toml.example`). Apply schema once: `npx wrangler d1 execute <DB_NAME> --remote --file=cloudflare/d1_feedback_events.sql`. |
-| **Python → D1** | `.env` → `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `D1_DATABASE_ID` | Lets the digest run **upload** HTML to `feedback_runs` (web viewer at `/run?run_id=...`). **Apply feedback from D1** uses the same three. `D1_DATABASE_ID` must be the **same** database the Worker uses. |
-| **Semantic Scholar id** | `.env` → `SEMANTIC_SCHOLAR_API_KEY` (recommended) | Manifest only adds `action_links` when `semantic_paper_id` is known. Resolver uses the API for arXiv/HF-style papers; a key reduces empty buttons. |
-| **Web viewer banner in email** | `.env` → `FEEDBACK_WEB_VIEWER_LINK_IN_EMAIL` (default `true`) | Set `false` to omit the “Open Feedback Web Viewer” block; 👍/👎 stay as-is. Use a real YAML boolean in `user/settings.yaml` (`false`), not a quoted string (`"false"` is treated as enabled unless you use the env var). |
-| **Feedback JSON attachments** | `.env` → `FEEDBACK_EMAIL_ATTACHMENTS` (default `all`) | `all` = manifest + questionnaire template (two files). `manifest` = only `run_feedback_manifest_*.json`. `none` = no attachments. Files are still written under `artifacts/`. |
+`memory` and `feedback` solve different problems.
 
-**Deploy Worker (minimal flow)**
+### What `memory.json` does
+
+`state/semantic/memory.json` exists to remember what the system has already shown you recently.
+
+It is used to:
+
+1. suppress repeated recommendations
+2. reduce near-duplicate daily digests
+3. keep the candidate set fresh across runs
+
+It is not a preference model and it does not fine-tune the LLM.
+
+### What `seeds.json` does
+
+`state/semantic/seeds.json` stores explicit positive and negative Semantic Scholar paper IDs.
+
+It is used to:
+
+1. steer Semantic Scholar recommendations toward papers like the ones you liked
+2. steer them away from papers you disliked
+
+So the distinction is:
+
+1. `memory.json` means “I have already seen this recently”
+2. `seeds.json` means “I explicitly like or dislike this kind of paper”
+
+### How they affect the daily digest
+
+On each run:
+
+1. the pipeline fetches candidates from arXiv, blogs, and optional Semantic Scholar recommendations
+2. `memory.json` suppresses recently seen items
+3. `seeds.json` influences which Semantic Scholar recommendations get fetched in the first place
+
+Neither file changes model weights. They only change the candidate pool.
+
+## Feedback
+
+Feedback is a separate loop from memory.
+
+### What feedback does
+
+Feedback turns explicit 👍 / 👎 events into updates to `seeds.json`.
+
+The flow is:
+
+1. `python main.py` generates a digest
+2. the run exports manifest/template files into `artifacts/`
+3. feedback links point to the worker in `cloudflare/`
+4. the worker writes events into D1
+5. `apply_feedback` converts those events into updates to `state/semantic/seeds.json`
+
+So feedback does not immediately rewrite today's report. It changes future recommendation inputs.
+
+### Core feedback configuration
+
+Copy `.env.example` → `.env` and focus on these first:
+
+| What | Where to set | Why it matters |
+|------|--------------|----------------|
+| **Worker URL** | `.env` → `FEEDBACK_ENDPOINT_BASE_URL` | Where email feedback links point |
+| **Signing secret** | `.env` + Worker → `FEEDBACK_LINK_SIGNING_SECRET` | Prevents forged feedback tokens |
+| **D1 access** | `.env` → `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `D1_DATABASE_ID` | Lets Python upload reports and read feedback |
+| **Semantic Scholar API** | `.env` → `SEMANTIC_SCHOLAR_API_KEY` | Improves `semantic_paper_id` resolution so feedback buttons appear |
+| **Feedback attachments** | `.env` → `FEEDBACK_EMAIL_ATTACHMENTS` | Controls whether manifest/template JSON files are attached to email |
+
+### Minimal Worker deployment
 
 ```bash
 cd cloudflare
@@ -156,26 +218,170 @@ npx wrangler secret put FEEDBACK_LINK_SIGNING_SECRET
 npx wrangler deploy
 ```
 
-Then set `FEEDBACK_ENDPOINT_BASE_URL` in `.env` to the deployed URL (Wrangler prints it).
+Then set `FEEDBACK_ENDPOINT_BASE_URL` in `.env` to the deployed URL.
 
-## GitHub Actions, `seeds.json`, and what “memory” does
+The “Open Feedback Web Viewer” banner is optional. It is just a browser entry point to `/run?run_id=...`. The actual feedback loop is driven by per-item 👍 / 👎 links.
 
-If you use the workflows under `.github/workflows/`:
+## GitHub Actions
 
-| Workflow | What it does with state |
-|----------|-------------------------|
-| **Daily digest** (`daily-digest.yml`) | Checks out `main`, **loads** `state/semantic/seeds.json` and `memory.json` from the **state branch** (default `memory-state`, overridable with repo variable `SEED_STATE_BRANCH`), runs `main.py`, then **pushes** updated **`memory.json`** back to that branch. |
-| **Apply feedback** (`apply-feedback-queue.yml`) | **Loads** `seeds.json` from the state branch, runs `python -m paperfeeder.cli.apply_feedback --from-d1` to merge **pending** rows in D1 into seeds, then **pushes** updated **`seeds.json`** back. Also runs on a **schedule** (default: every 6 hours at :30 UTC — edit the `cron` in the workflow file to change). Manual runs still default to **dry run** unless you uncheck it. |
+This is the most important section if you want PaperFeeder to run remotely and send a daily digest automatically.
 
-### How `seeds.json` affects the digest (not a separate “AI agent”)
+There are two key workflows:
 
-There is no extra agent process: the **same** `main.py` pipeline reads the file.
+| Workflow | Purpose |
+|----------|---------|
+| `.github/workflows/daily-digest.yml` | Runs the digest on a schedule, sends email, and persists `memory.json` |
+| `.github/workflows/apply-feedback-queue.yml` | Periodically merges D1 feedback into `seeds.json` |
 
-- When **`semantic_scholar_enabled`** is on, `SemanticScholarSource` (`paperfeeder/sources/paper_sources.py`) reads `semantic_scholar_seeds_path` (default `state/semantic/seeds.json`).
-- It sends those IDs to Semantic Scholar’s **recommendations** API as `positivePaperIds` / `negativePaperIds`, so 👍/👎 (after apply) **steer which S2 recommendations** get merged into the candidate paper list.
-- **`memory.json`** is separate: it tracks recently **seen** items so they can be suppressed from recommendations (TTL / caps in config).
+### What each workflow does
 
-So: updated seeds **do not** fine-tune an LLM; they change the **S2 recommendation request**. arXiv / blogs / manual sources are unaffected by seeds, except where shared **memory** dedupes “already seen” papers.
+#### `daily-digest.yml`
+
+By default it:
+
+1. runs every day at `03:00 UTC`
+2. loads `state/semantic/memory.json` and `state/semantic/seeds.json` from the state branch
+3. runs `python main.py`
+4. pushes updated `memory.json` back to the state branch
+
+This workflow is what makes remote daily email delivery work.
+
+#### `apply-feedback-queue.yml`
+
+By default it:
+
+1. runs every 3 days at `03:30 UTC` with `30 3 */3 * *`
+2. loads `seeds.json` from the state branch
+3. reads pending feedback from D1
+4. runs `python -m paperfeeder.cli.apply_feedback --from-d1`
+5. pushes updated `seeds.json` back to the state branch
+
+This workflow is what closes the feedback loop.
+
+### What the state branch is
+
+The workflows do not write runtime state back to `main`.
+
+Instead they use a dedicated branch:
+
+1. default: `memory-state`
+2. overrideable with the repo variable `SEED_STATE_BRANCH`
+
+That branch stores:
+
+1. `state/semantic/memory.json`
+2. `state/semantic/seeds.json`
+
+This keeps code and runtime state separate.
+
+### Minimal remote deployment for daily sending
+
+If your goal is “run remotely and send every day”, follow this order.
+
+#### 1. Push the repo to GitHub
+
+1. create your repo
+2. push the code
+3. enable GitHub Actions
+
+#### 2. Add required GitHub Secrets
+
+At minimum, set these in `Settings -> Secrets and variables -> Actions -> Secrets`:
+
+1. `LLM_API_KEY`
+2. `LLM_MODEL`
+3. `RESEND_API_KEY`
+4. `EMAIL_TO`
+
+Common additional secrets:
+
+1. `LLM_BASE_URL`
+2. `LLM_FILTER_API_KEY`
+3. `LLM_FILTER_BASE_URL`
+4. `LLM_FILTER_MODEL`
+5. `TAVILY_API_KEY`
+6. `SEMANTIC_SCHOLAR_API_KEY`
+7. `CLOUDFLARE_ACCOUNT_ID`
+8. `CLOUDFLARE_API_TOKEN`
+9. `D1_DATABASE_ID`
+10. `FEEDBACK_ENDPOINT_BASE_URL`
+11. `FEEDBACK_LINK_SIGNING_SECRET`
+
+#### 3. Add GitHub Variables
+
+Recommended variables in `Settings -> Secrets and variables -> Actions -> Variables`:
+
+1. `SEED_STATE_BRANCH`
+2. `SEMANTIC_MEMORY_ENABLED`
+3. `SEMANTIC_SEEN_TTL_DAYS`
+4. `SEMANTIC_MEMORY_MAX_IDS`
+5. `FEEDBACK_TOKEN_TTL_DAYS`
+6. `FEEDBACK_REVIEWER`
+
+#### 4. Run `Daily Paper Digest` manually once
+
+Use `workflow_dispatch` first:
+
+1. run once with `dry_run=true`
+2. inspect artifacts and logs
+3. then run with `dry_run=false`
+
+The first non-dry-run execution will also initialize the state branch if needed.
+
+#### 5. Confirm the schedule
+
+Current defaults:
+
+1. `daily-digest.yml`: `0 3 * * *`
+2. `apply-feedback-queue.yml`: `30 3 */3 * *`
+
+Both are UTC. Change the cron expressions if you want a different time zone or cadence.
+
+Use this approach when customizing the schedule:
+
+1. pick the local time you actually want
+2. convert that time to UTC
+3. put the UTC value into the workflow `schedule.cron`
+
+Examples:
+
+1. If you are in China Standard Time (`UTC+8`) and want `daily-digest.yml` at 09:00 local time, use `0 1 * * *`
+2. If you want `apply-feedback-queue.yml` every 3 days at 11:30 China time, use `30 3 */3 * *`
+
+One important limitation: GitHub Actions cron is based on UTC calendar time, not a strict “every 72 hours” timer. A pattern like `*/3` means “every 3rd day of the month”, so the cadence resets at month boundaries. That is usually fine here. If you need an exact 72-hour interval, run the workflow daily and gate execution inside the script instead.
+
+### What happens every day in remote mode
+
+Each day:
+
+1. GitHub Actions triggers `daily-digest.yml`
+2. the workflow restores yesterday's `memory.json` / `seeds.json`
+3. it runs `main.py`
+4. it sends the email
+5. it writes the updated `memory.json` back to the state branch
+
+If readers submit feedback:
+
+1. events go into D1
+2. `apply-feedback-queue.yml` later merges them into `seeds.json`
+3. future Semantic Scholar recommendations change accordingly
+
+### Minimum setup if you only want remote daily email
+
+If feedback is not important yet, the minimum useful remote setup is:
+
+1. `LLM_*` secrets
+2. `RESEND_API_KEY`
+3. `EMAIL_TO`
+4. `daily-digest.yml`
+
+That already gives you:
+
+1. remote daily digest generation
+2. remote email delivery
+3. persistent `memory.json`
+
+Add Cloudflare + D1 + `apply-feedback-queue.yml` later when you want the full feedback loop.
 
 ## Tests
 

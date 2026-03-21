@@ -93,6 +93,16 @@ def _extract_report_urls(report_html: str) -> set[str]:
     return {normalize_url(u) for u in raw_urls if normalize_url(u)}
 
 
+def make_email_safe_report_html(report_html: str) -> str:
+    """Remove script tags so desktop email clients do not expose raw JS as text."""
+    if not report_html:
+        return report_html
+
+    import re
+
+    return re.sub(r"<script\b[^>]*>.*?</script\s*>", "", report_html, flags=re.IGNORECASE | re.DOTALL)
+
+
 def build_run_id(now: datetime | None = None) -> str:
     dt = now or _utc_now()
     return dt.strftime("%Y-%m-%dT%H-%M-%SZ")

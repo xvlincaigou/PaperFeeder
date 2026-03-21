@@ -43,3 +43,10 @@ openspec/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# Local debug sample override (tests/debug_sample.example.json is tracked)
+tests/debug_sample.json
+debug_sample.json
+wrangler.toml
+

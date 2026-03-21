@@ -25,7 +25,10 @@ from .paths import (
     DEFAULT_RESEARCH_PROFILE_PATH,
     DEFAULT_SEMANTIC_MEMORY_PATH,
     DEFAULT_SEMANTIC_SEEDS_PATH,
-    DEFAULT_USER_SETTINGS_PATH,
+    DEFAULT_USER_ARXIV_CATEGORIES_PATH,
+    DEFAULT_USER_BLOG_SETTINGS_PATH,
+    DEFAULT_USER_EXCLUDE_KEYWORDS_PATH,
+    DEFAULT_USER_KEYWORDS_PATH,
 )
 
 load_dotenv()
@@ -52,6 +55,22 @@ def _parse_loose_bool(value: Any, *, default: bool) -> bool:
     return bool(value)
 
 
+def _load_user_list_file(path_value: str | None) -> list[str]:
+    if not path_value:
+        return []
+
+    file_path = Path(path_value)
+    if not file_path.exists():
+        return []
+
+    items: list[str] = []
+    for raw_line in file_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.split("#", 1)[0].strip()
+        if line:
+            items.append(line)
+    return items
+
+
 @dataclass
 class Config:
     llm_api_key: str = ""
@@ -65,47 +84,21 @@ class Config:
     arxiv_categories: list[str] = field(default_factory=lambda: ["cs.LG", "cs.CL"])
     keywords: list[str] = field(
         default_factory=lambda: [
-            "diffusion model",
-            "diffusion language",
-            "flow matching",
-            "generative model",
-            "autoregressive",
-            "chain of thought",
+            "machine learning",
+            "language model",
             "reasoning",
-            "llm",
-            "large language model",
-            "in-context learning",
-            "prompt",
-            "representation learning",
-            "contrastive learning",
-            "self-supervised",
-            "foundation model",
-            "ai safety",
-            "alignment",
-            "rlhf",
-            "red teaming",
-            "jailbreak",
-            "safety benchmark",
-            "harmful",
-            "tokenizer",
-            "tokenization",
-            "continuous token",
-            "latent space",
-            "latent reasoning",
         ]
     )
     exclude_keywords: list[str] = field(default_factory=list)
-    research_interests: str = """
-    I'm a Master's student researching:
-    1. Generative models, especially diffusion models for language
-    2. LLM reasoning, including chain-of-thought and latent reasoning
-    3. Representation learning and continuous tokenization
-    4. AI safety, including benchmarks and alignment
-    """
+    research_interests: str = "You are screening AI research updates. Prefer technically substantive work with clear novelty."
     prompt_addon: str = ""
-    user_settings_path: str = DEFAULT_USER_SETTINGS_PATH
+    prompt_language: str = "zh-CN"
+    user_blog_settings_path: str = DEFAULT_USER_BLOG_SETTINGS_PATH
     user_research_profile_path: str = DEFAULT_RESEARCH_PROFILE_PATH
     user_prompt_addon_path: str = DEFAULT_PROMPT_ADDON_PATH
+    user_arxiv_categories_path: str = DEFAULT_USER_ARXIV_CATEGORIES_PATH
+    user_keywords_path: str = DEFAULT_USER_KEYWORDS_PATH
+    user_exclude_keywords_path: str = DEFAULT_USER_EXCLUDE_KEYWORDS_PATH
 
     llm_filter_enabled: bool = True
     llm_filter_threshold: int = 5
@@ -135,7 +128,7 @@ class Config:
     blogs_enabled: bool = True
     blog_days_back: int = 1
     enabled_blogs: Optional[List[str]] = None
-    custom_blogs: Optional[Dict[str, Dict[str, Any]]] = None
+    custom_blogs: Optional[Dict[str, Dict[str, Any]]] = field(default_factory=dict)
 
     cloudflare_account_id: str = ""
     cloudflare_api_token: str = ""
@@ -165,16 +158,16 @@ class Config:
             with open(path, "r") as handle:
                 config_data = yaml.safe_load(handle) or {}
 
-        user_settings_path = (
-            os.getenv("USER_SETTINGS_PATH")
-            or config_data.get("user_settings_path")
-            or DEFAULT_USER_SETTINGS_PATH
+        user_blog_settings_path = (
+            os.getenv("USER_BLOG_SETTINGS_PATH")
+            or config_data.get("user_blog_settings_path")
+            or DEFAULT_USER_BLOG_SETTINGS_PATH
         )
-        if user_settings_path and os.path.exists(user_settings_path):
-            with open(user_settings_path, "r") as handle:
-                user_data = yaml.safe_load(handle) or {}
-                if isinstance(user_data, dict):
-                    config_data.update(user_data)
+        if user_blog_settings_path and os.path.exists(user_blog_settings_path):
+            with open(user_blog_settings_path, "r") as handle:
+                blog_data = yaml.safe_load(handle) or {}
+                if isinstance(blog_data, dict):
+                    config_data.update(blog_data)
 
         env_overrides = {
             "llm_api_key": os.getenv("LLM_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY"),
@@ -201,9 +194,13 @@ class Config:
             "feedback_resolution_no_key_max_lookups": os.getenv("FEEDBACK_RESOLUTION_NO_KEY_MAX_LOOKUPS"),
             "feedback_resolution_time_budget_sec": os.getenv("FEEDBACK_RESOLUTION_TIME_BUDGET_SEC"),
             "feedback_resolution_run_cache_enabled": os.getenv("FEEDBACK_RESOLUTION_RUN_CACHE_ENABLED"),
-            "user_settings_path": os.getenv("USER_SETTINGS_PATH"),
+            "user_blog_settings_path": os.getenv("USER_BLOG_SETTINGS_PATH"),
+            "prompt_language": os.getenv("PROMPT_LANGUAGE"),
             "user_research_profile_path": os.getenv("USER_RESEARCH_PROFILE_PATH"),
             "user_prompt_addon_path": os.getenv("USER_PROMPT_ADDON_PATH"),
+            "user_arxiv_categories_path": os.getenv("USER_ARXIV_CATEGORIES_PATH"),
+            "user_keywords_path": os.getenv("USER_KEYWORDS_PATH"),
+            "user_exclude_keywords_path": os.getenv("USER_EXCLUDE_KEYWORDS_PATH"),
             "papers_enabled": os.getenv("PAPERS_ENABLED"),
             "semantic_scholar_enabled": os.getenv("SEMANTIC_SCHOLAR_ENABLED"),
             "semantic_scholar_api_key": os.getenv("SEMANTIC_SCHOLAR_API_KEY"),
@@ -260,9 +257,27 @@ class Config:
         if prompt_addon_path:
             addon_file = Path(prompt_addon_path)
             if addon_file.exists():
-                addon_text = addon_file.read_text().strip()
+                addon_text = addon_file.read_text(encoding="utf-8").strip()
                 if addon_text:
                     config_data["prompt_addon"] = addon_text
+
+        arxiv_categories = _load_user_list_file(
+            config_data.get("user_arxiv_categories_path") or DEFAULT_USER_ARXIV_CATEGORIES_PATH
+        )
+        if arxiv_categories:
+            config_data["arxiv_categories"] = arxiv_categories
+
+        keywords = _load_user_list_file(
+            config_data.get("user_keywords_path") or DEFAULT_USER_KEYWORDS_PATH
+        )
+        if keywords:
+            config_data["keywords"] = keywords
+
+        exclude_keywords = _load_user_list_file(
+            config_data.get("user_exclude_keywords_path") or DEFAULT_USER_EXCLUDE_KEYWORDS_PATH
+        )
+        if exclude_keywords:
+            config_data["exclude_keywords"] = exclude_keywords
 
         if not config_data.get("semantic_scholar_seeds_path"):
             old_seeds = Path("semantic_scholar_seeds.json")
@@ -307,9 +322,13 @@ class Config:
             "exclude_keywords": self.exclude_keywords,
             "research_interests": self.research_interests,
             "prompt_addon": self.prompt_addon,
-            "user_settings_path": self.user_settings_path,
+            "prompt_language": self.prompt_language,
+            "user_blog_settings_path": self.user_blog_settings_path,
             "user_research_profile_path": self.user_research_profile_path,
             "user_prompt_addon_path": self.user_prompt_addon_path,
+            "user_arxiv_categories_path": self.user_arxiv_categories_path,
+            "user_keywords_path": self.user_keywords_path,
+            "user_exclude_keywords_path": self.user_exclude_keywords_path,
             "llm_filter_enabled": self.llm_filter_enabled,
             "llm_filter_threshold": self.llm_filter_threshold,
             "max_papers": self.max_papers,

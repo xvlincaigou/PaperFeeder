@@ -23,7 +23,7 @@ PaperFeeder/
 ├── cloudflare/           # 反馈用 Worker + D1 表结构 SQL
 ├── state/semantic/       # 长期状态：种子 ID、最近见过的论文
 ├── artifacts/            # 每次运行生成的 manifest 等（可删，git 忽略）
-├── user/                 # 你改的设置、人设、提示词片段
+├── user/                 # 你改的人设、关键词、提示词片段
 ├── tests/                # 单元测试
 ├── config.yaml           # 默认配置
 └── main.py               # 跑摘要的主入口
@@ -75,9 +75,25 @@ source .venv/bin/activate
 
 还可以按需改：
 
-- `user/settings.yaml`  
+- `config.yaml` 里的 `prompt_language`（决定报告 prompt 以中文还是英文为主）
 - `user/research_interests.txt`（研究兴趣人设）  
+- `user/keywords.txt`（想重点抓的关键词）
+- `user/exclude_keywords.txt`（想过滤掉的噪音词）
+- `user/arxiv_categories.txt`（想跟踪的 arXiv 分类）
 - `user/prompt_addon.txt`（给 LLM 的附加说明）
+
+现在推荐这样理解：`config.yaml` 是**主配置文件**；`user/blogs.yaml` 放博客源；`user/` 下面其他 txt 放你的研究画像文本。
+
+如果别的使用者更习惯英文，可以把 `config.yaml` 里的 `prompt_language` 改成 `en-US`；默认是 `zh-CN`。
+
+如果你想换一套起始画像，可以看 `user/examples/profiles/` 下面的预设模板：
+
+- `frontier-ai-lab`
+- `interpretability-alignment`
+- `coding-agents-reasoning`
+- `multimodal-generative`
+
+你可以把里面的 txt 内容拷到 `user/` 根目录，或者直接在 `config.yaml` 里把路径指向某个 preset。
 
 ### 3. 跑一版摘要（先试跑，不发真邮件）
 
@@ -89,9 +105,9 @@ python main.py --dry-run
 
 不想每次为了试功能都去拉几百篇、再过关键词/双阶段 LLM/Tavily？用 **`--debug-sample`**：从 JSON 读 1 篇（或几篇）固定数据，**跳过** arXiv/HF/S2 抓取、博客、粗筛/精筛 LLM、Tavily 增强；仍会走 **写报告 → manifest → 邮件/HTML 预览 →（若配置了）D1** 这条链，适合验证反馈链接、Worker、排版等。
 
-1. 复制模板：  
-   `cp user/debug_sample.example.json user/debug_sample.json`  
-2. 编辑 `user/debug_sample.json`：改 `title`、`url`、`arxiv_id`；若要测 👍/👎 签名链接，填上能解析的 **`semantic_paper_id`**（或配好 `SEMANTIC_SCHOLAR_API_KEY` 让程序解析）。
+1. （可选）复制模板：  
+   `cp tests/debug_sample.example.json tests/debug_sample.json`  
+2. 编辑 `tests/debug_sample.json`：改 `title`、`url`、`arxiv_id`；若不复制，默认会用仓库里的 `tests/debug_sample.example.json`。若要测 👍/👎 签名链接，填上能解析的 **`semantic_paper_id`**（或配好 `SEMANTIC_SCHOLAR_API_KEY` 让程序解析）。
 
 ```bash
 # 默认：**不调**主报告 LLM，只用固定极简 HTML（测邮件 / manifest / D1 / Worker，省 token）
@@ -147,9 +163,17 @@ python scripts/semantic_feedback_apply.py --manifest-file artifacts/run_feedback
 程序会按顺序合并，**后面的覆盖前面的**：
 
 1. `config.yaml`  
-2. `user/settings.yaml`  
+2. `user/blogs.yaml`  
 3. **环境变量**（`.env` 里由 `python-dotenv` 加载的也算）  
-4. `user/research_interests.txt`、`user/prompt_addon.txt`
+4. `user/research_interests.txt`、`user/prompt_addon.txt`、`user/keywords.txt`、`user/exclude_keywords.txt`、`user/arxiv_categories.txt`
+
+现在正常使用时，建议把 `config.yaml` 当成**主配置文件**，把博客源写在 `user/blogs.yaml`，再配合修改 `user/` 目录和 `.env`。
+
+其中这几个列表文件都支持“**每行一个条目**”的格式：
+
+- 空行会忽略
+- 以 `#` 开头的行会忽略
+- 行内 `#` 后面的注释也会忽略
 
 与语义状态相关的默认路径在 `config.yaml` 里一般是：
 
@@ -160,148 +184,90 @@ semantic_memory_path: "state/semantic/memory.json"
 
 ---
 
-## 反馈流程（从邮件点到写进种子）
+## Memory（到底是什么）
 
-1. 运行 `python main.py` 生成当期 digest。  
-2. 若条件满足，会在 `artifacts/` 里导出 manifest 等。  
-3. 邮件/网页里的链接指向你部署的 **Cloudflare Worker**。  
-4. 你在 Worker 或 D1 里积累的处理结果，最终通过 `apply_feedback` **写回** `state/semantic/seeds.json`。
+先把 `memory` 和 `feedback` 分开理解，否则很容易混。
 
-### 邮件里直接 👍 / 👎 需要什么？
+### `memory.json` 做什么
 
-在 **`.env`** 里至少要有（且与 Worker 一致）：
+`state/semantic/memory.json` 只负责一件事：
 
-- **`FEEDBACK_ENDPOINT_BASE_URL`**：Worker 的公网根地址，**不要**末尾多写 `/`。  
-- **`FEEDBACK_LINK_SIGNING_SECRET`**：和 Worker 上用 `wrangler secret put` 设的那串**完全一样**。
+1. 记住最近已经看过哪些论文
+2. 下次跑 digest 时尽量不要重复推给你
 
-否则 manifest 里**没有**签名 URL，HTML 里就不会出现可用的点赞链接。  
-邮件里点链接是普通的 **GET** 打开 `/feedback?t=...`；邮件客户端一般会**忽略**报告里附带的 JavaScript，但不影响链接本身。
+它不是偏好学习，不是打分器，也不会改 LLM 的“口味”。它本质上是**去重 / 降重缓存**。
 
-**「Open Feedback Web Viewer」** 那一行是**可选**的：它只是多一个浏览器里打开整份报告的入口（`/run?run_id=...`），适合邮件排版乱、换设备看、或转发给别人。每篇旁边的 👍/👎 **不依赖**这个入口。若不需要，在 `.env` 里设 `FEEDBACK_WEB_VIEWER_LINK_IN_EMAIL=false`，或在 `user/settings.yaml` 里写 **`feedback_web_viewer_link_in_email: false`（布尔值，不要加引号）**；若写成带引号的 `"false"`，YAML 会当成字符串，以前会被误判为「开」，现已修复。Python 仍会照常把 HTML 推到 D1，需要时仍可手动打开 `/run`。
+### `seeds.json` 做什么
+
+`state/semantic/seeds.json` 负责另一件事：
+
+1. 记录你明确喜欢的 Semantic Scholar 论文 ID
+2. 记录你明确不喜欢的 Semantic Scholar 论文 ID
+3. 把这些正负样本喂给 Semantic Scholar recommendation API
+
+所以：
+
+1. `memory.json` 解决“别老给我看同一篇”
+2. `seeds.json` 解决“以后多给我推这种 / 少给我推这种”
+
+### 这两者怎么影响每天的 digest
+
+每天跑 `main.py` 时：
+
+1. arXiv、博客、手动源照常抓
+2. 如果开了 `semantic_scholar_enabled`，会额外根据 `seeds.json` 去请求推荐论文
+3. `memory.json` 会把最近见过的内容压掉，减少重复
+
+关键点：
+
+1. `memory.json` 不会微调 LLM
+2. `seeds.json` 也不会微调 LLM
+3. 它们影响的是**候选论文集合**，不是模型参数
+
+### 你平时什么时候会碰到它们
+
+本地手动跑时：
+
+1. `memory.json` 会在跑完后更新“今天见过哪些论文”
+2. `seeds.json` 只有在你应用反馈后才会改
+
+如果你完全不做 feedback：
+
+1. `memory.json` 还是有用
+2. `seeds.json` 可能一直是空的
 
 ---
 
-## 反馈相关配置清单（对照填就行）
+## Feedback（到底是什么）
 
-复制 **`.env.example` → `.env`**，按下表检查（环境变量会覆盖 yaml，逻辑见 `paperfeeder/config/schema.py`）。
+`feedback` 是一条单独的闭环，它的目标不是去重，而是把你的显式偏好写回 `seeds.json`。
 
-| 要配什么 | 填在哪 | 说明 |
+### 整条反馈链路
+
+1. `python main.py` 生成 digest
+2. 运行时会产出 manifest / template 到 `artifacts/`
+3. 邮件或网页里的 👍 / 👎 链接会打到你部署的 Cloudflare Worker
+4. Worker 把事件写进 D1
+5. `apply_feedback` 再把这些事件转换成 `seeds.json` 里的正负样本
+
+所以 feedback 不是“当场改变今天的报告”，而是：
+
+1. 先记录反馈
+2. 再在后续运行里影响推荐候选
+
+### 最关键的几个配置
+
+复制 **`.env.example` → `.env`** 后，至少关注这些：
+
+| 要配什么 | 填在哪 | 作用 |
 |----------|--------|------|
-| Worker 地址 | `.env` → `FEEDBACK_ENDPOINT_BASE_URL` | 例如 `https://paperfeeder-feedback.xxx.workers.dev`，**无尾斜杠**。邮件里链接就指向这里。 |
-| 签名密钥 | `.env` **和** Worker 两边 | **必须相同**。Worker：`cd cloudflare`，`npx wrangler secret put FEEDBACK_LINK_SIGNING_SECRET`，再在同一 `.env` 里写同一串。用于生成和校验 `t=` 参数。 |
-| D1 绑在 Worker 上 | Cloudflare 控制台或 Wrangler | Worker 代码里用的绑定名必须是 **`DB`**，示例见 `cloudflare/wrangler.toml.example`。表结构执行一次：`npx wrangler d1 execute <数据库名> --remote --file=d1_feedback_events.sql`（在 `cloudflare/` 目录下时文件名为 `d1_feedback_events.sql`）。 |
-| Python 访问 D1 | `.env` → `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN`、`D1_DATABASE_ID` | digest 会把网页版报告写入 D1 的 `feedback_runs`；`--from-d1` 读 pending 事件也用这三项。**数据库 ID 要和 Worker 用的是同一个。** |
-| Semantic Scholar | `.env` → `SEMANTIC_SCHOLAR_API_KEY`（强烈建议） | 只有解析出 **`semantic_paper_id`** 才会给该篇生成 `action_links`（可点的 👍/👎）。有 API Key 能明显减少「没有按钮」的论文。 |
-| 邮件里的 Web Viewer 入口 | `.env` → `FEEDBACK_WEB_VIEWER_LINK_IN_EMAIL`（默认 `true`） | 设为 `false` 可去掉「Open Feedback Web Viewer」横幅；每篇 👍/👎 不变。 |
-| 邮件里的反馈附件 | `.env` → `FEEDBACK_EMAIL_ATTACHMENTS`（默认 `all`） | `all` = manifest + 问卷模板（两个 JSON）。`manifest` = 只要 `run_feedback_manifest_*.json`。`none` = 不附任何文件（文件仍会写在 `artifacts/`）。 |
+| Worker 地址 | `.env` → `FEEDBACK_ENDPOINT_BASE_URL` | 邮件里 👍 / 👎 链接打到哪里 |
+| 签名密钥 | `.env` + Worker secret → `FEEDBACK_LINK_SIGNING_SECRET` | 保证反馈链接不会被伪造 |
+| D1 访问 | `.env` → `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN`、`D1_DATABASE_ID` | 让 Python 程序上传 digest、拉取反馈 |
+| Semantic Scholar API | `.env` → `SEMANTIC_SCHOLAR_API_KEY` | 提高 `semantic_paper_id` 解析成功率，否则很多条目没有按钮 |
+| 邮件附件模式 | `.env` → `FEEDBACK_EMAIL_ATTACHMENTS` | 控制是否把 manifest / template 挂到邮件里 |
 
-### 一步一步你要做什么（按这个顺序来）
-
-下面把上表里的 5 件事拆成**可执行的步骤**。你不需要一次全做完：只要**不配 Worker**，邮件里就不会有 👍/👎；但配到第 6 步左右，邮件点赞 + 写 D1 才能串起来。
-
----
-
-**第 0 步：准备 `.env`**
-
-1. 复制：`.env.example` → `.env`（若还没有）。  
-2. 后面所有「填进 `.env`」的项，都写在这个文件里，**不要提交到 git**。
-
----
-
-**第 1 步：在 Cloudflare 上创建一个 D1 数据库**
-
-1. 打开终端，进入本仓库的 `cloudflare` 目录：  
-   `cd cloudflare`
-2. 执行（数据库名可改，但要和后面 `wrangler.toml` 里一致）：  
-   `npx wrangler d1 create paperfeeder-feedback`
-3. 命令输出里会有一段 **`database_id`**（一长串 UUID）。**复制保存**，下面两步都要用。
-
----
-
-**第 2 步：让 Worker 能访问这个 D1（绑定名必须是 `DB`）**
-
-1. 若还没有：`cp wrangler.toml.example wrangler.toml`
-2. 用编辑器打开 `cloudflare/wrangler.toml`，找到 `[[d1_databases]]` 里的 `database_id = "..."`  
-3. 把引号里的内容**换成第 1 步复制的那串 ID**。  
-4. 确认 `binding = "DB"` **不要改**（代码里写死了 `env.DB`）。
-
----
-
-**第 3 步：在 D1 里建表（只做一次）**
-
-仍在 `cloudflare/` 目录下执行（`paperfeeder-feedback` 若你第 1 步用了别的名字，这里改成你的库名）：
-
-```bash
-npx wrangler d1 execute paperfeeder-feedback --remote --file=d1_feedback_events.sql
-```
-
-这样 `feedback_events`、`feedback_runs` 等表才会存在，Worker 和 Python 才能读写。
-
----
-
-**第 4 步：设置签名密钥（Worker 和 PaperFeeder 必须同一条）**
-
-1. 自己想一串**足够长、保密的随机字符串**（或让密码生成器生成）。  
-2. 在 `cloudflare/` 下执行：  
-   `npx wrangler secret put FEEDBACK_LINK_SIGNING_SECRET`  
-   提示粘贴时，把这串**原样粘贴**进去。  
-3. 打开项目根目录的 `.env`，加一行（**同一串**，不要多空格、不要换行）：  
-   `FEEDBACK_LINK_SIGNING_SECRET=你刚才那一串`
-
-作用：Python 用它在邮件链接里签 `t=`；Worker 用同一密钥校验，防止别人伪造点赞链接。
-
----
-
-**第 5 步：部署 Worker，拿到公网 URL**
-
-在 `cloudflare/` 下：
-
-```bash
-npx wrangler deploy
-```
-
-终端或 Cloudflare 控制台里会看到 Worker 的地址，例如 `https://paperfeeder-feedback.xxx.workers.dev`。
-
-1. 打开根目录 `.env`，添加（**末尾不要加斜杠 `/`**）：  
-   `FEEDBACK_ENDPOINT_BASE_URL=https://你的子域.workers.dev`
-
----
-
-**第 6 步：让本机 Python 也能访问「同一个」D1（上传网页报告、从 D1 拉反馈）**
-
-这三项是给 **PaperFeeder 主程序** 调 Cloudflare API 用的，**数据库 ID 必须和第 1～2 步是同一个**。
-
-1. 登录 Cloudflare 仪表盘 → 右侧或账户信息里找到 **Account ID** → 写入 `.env`：  
-   `CLOUDFLARE_ACCOUNT_ID=...`
-2. **My Profile → API Tokens** 创建一个 Token，权限要包含对你账号下 **D1 的读写**（以及按需 Workers 相关；按你实际界面勾选）。  
-   写入：  
-   `CLOUDFLARE_API_TOKEN=...`
-3. 把**第 1 步那个 `database_id`** 再写一遍：  
-   `D1_DATABASE_ID=...`
-
-不配这三项：**digest 仍可能发邮件**，但**不一定能把报告同步到 D1**；用 `--from-d1` 应用反馈时也会缺凭证。
-
----
-
-**第 7 步（强烈建议）：Semantic Scholar API Key，减少「没有 👍/👎」的论文**
-
-1. 到 Semantic Scholar 开发者页申请 API Key（以官网说明为准）。  
-2. 在 `.env` 里添加：  
-   `SEMANTIC_SCHOLAR_API_KEY=...`
-
-不配的话：很多论文解析不出 `semantic_paper_id`，manifest 里就没有 `action_links`，邮件里**那几篇旁边就没有按钮**——不是程序坏了，是缺 ID。
-
----
-
-**第 8 步：验证**
-
-1. 在项目根目录：`source .venv/bin/activate`（若用虚拟环境）  
-2. `python main.py --dry-run`  
-3. 打开生成的 `report_preview.html` 或看 `artifacts/run_feedback_manifest_*.json`：有 `action_links` 的条目，邮件里才会有对应点赞链接。
-
----
-
-### 部署 Worker（最短步骤）
+### Worker 最短部署步骤
 
 ```bash
 cd cloudflare
@@ -312,28 +278,195 @@ npx wrangler secret put FEEDBACK_LINK_SIGNING_SECRET
 npx wrangler deploy
 ```
 
-部署成功后，把终端里显示的 Worker URL 填进 `.env` 的 `FEEDBACK_ENDPOINT_BASE_URL`。
+部署后，把 Worker URL 写进 `.env`：
+
+```bash
+FEEDBACK_ENDPOINT_BASE_URL=https://你的-worker.workers.dev
+```
+
+### Web Viewer 是什么
+
+`Open Feedback Web Viewer` 只是一个网页入口：
+
+1. 方便你在浏览器里看整份 digest
+2. 方便分享或补点反馈
+
+它不是反馈本身。每篇旁边的 👍 / 👎 才是核心链路。
+
+如果不要这块入口，可以在 `.env` 里设：
+
+```bash
+FEEDBACK_WEB_VIEWER_LINK_IN_EMAIL=false
+```
 
 ---
 
-## GitHub Actions、`seeds.json` 和「记忆」到底干什么
+## GitHub Actions（远程每天定时发送）
 
-若使用 `.github/workflows/` 里的自动化：
+这一章最重要，因为它决定你是不是能把 PaperFeeder 变成**远程定时发送服务**。
 
-| 工作流 | 对状态文件做什么 |
-|--------|------------------|
-| **Daily digest**（`daily-digest.yml`） | 检出 `main`，从 **state 分支**（默认 `memory-state`，可用仓库变量 `SEED_STATE_BRANCH` 改）**拉取** `state/semantic/seeds.json` 和 `memory.json`，跑 `main.py`，再把更新后的 **`memory.json`** **推回**该分支。 |
-| **Apply feedback**（`apply-feedback-queue.yml`） | 从 state 分支 **拉取** `seeds.json`，执行 `python -m paperfeeder.cli.apply_feedback --from-d1`，把 D1 里 **pending** 的 👍/👎 合并进 seeds，再 **推回** **`seeds.json`**。现已支持 **定时**（默认每 6 小时、UTC 半点跑一次，可在该 workflow 里改 `cron`）。手动触发时仍默认 **dry run**，取消勾选才会写回分支。 |
+仓库里有两个关键 workflow：
 
-### 更新后的 `seeds.json` 在流水线里怎么用（不是单独的 Agent）
+| Workflow | 作用 |
+|----------|------|
+| `.github/workflows/daily-digest.yml` | 每天定时跑 digest，发邮件，并把最新 `memory.json` 持久化到 state 分支 |
+| `.github/workflows/apply-feedback-queue.yml` | 定时把 D1 里的 pending 反馈合并进 `seeds.json` |
 
-没有单独的「Agent 进程」：就是 **`main.py` 同一条流水线**读这个文件。
+### 它们各自怎么工作
 
-- 开启 **`semantic_scholar_enabled`** 时，`SemanticScholarSource`（`paperfeeder/sources/paper_sources.py`）会读 `semantic_scholar_seeds_path`（默认 `state/semantic/seeds.json`）。
-- 把其中的 ID 作为 **`positivePaperIds` / `negativePaperIds`** 发给 Semantic Scholar 的 **推荐接口**，因此你在邮件里点的 👍/👎（经 `apply_feedback` 写进 seeds 后）会 **影响 S2 推荐来的论文** 是否进入候选池。
-- **`memory.json`** 是另一套：记录近期 **见过** 的论文，用于在推荐结果里做去重/抑制（TTL、条数上限等在配置里）。
+#### 1. `daily-digest.yml`
 
-结论：**seeds 不会用来微调 LLM**，只改变 **S2 推荐请求**；arXiv / 博客 / 手动源不受 seeds 直接影响，但可能与共用的 **memory**「见过即降权」逻辑叠加。
+默认行为：
+
+1. 每天 `03:00 UTC` 运行一次
+2. 从 state 分支读取 `state/semantic/memory.json` 和 `state/semantic/seeds.json`
+3. 运行 `python main.py`
+4. 如果不是 dry run，就把更新后的 `memory.json` 推回 state 分支
+
+这条 workflow 负责：
+
+1. 远程定时发送邮件
+2. 维持“最近看过什么”的远程记忆
+
+#### 2. `apply-feedback-queue.yml`
+
+默认行为：
+
+1. 每 6 小时跑一次（UTC 半点）
+2. 从 state 分支读取 `seeds.json`
+3. 从 D1 拉 pending feedback
+4. 执行 `python -m paperfeeder.cli.apply_feedback --from-d1`
+5. 把更新后的 `seeds.json` 推回 state 分支
+
+这条 workflow 负责：
+
+1. 让远程收集到的 👍 / 👎 真正转化成推荐偏好
+
+### 什么是 state 分支
+
+workflow 不会把运行时状态直接写回 `main`，而是写到一个单独分支：
+
+1. 默认叫 `memory-state`
+2. 也可以用仓库变量 `SEED_STATE_BRANCH` 改名
+
+这个分支只存：
+
+1. `state/semantic/memory.json`
+2. `state/semantic/seeds.json`
+
+这样做的好处是：
+
+1. 代码分支保持干净
+2. 运行时状态长期保存
+3. GitHub Actions 每次跑都能接着上次的状态继续
+
+### 远程定时发送最小部署步骤
+
+如果你的目标是“每天自动跑并发邮件”，按这个顺序来：
+
+#### 第 1 步：把仓库放到 GitHub
+
+1. 推到自己的 GitHub 仓库
+2. 打开 Actions 权限
+
+#### 第 2 步：准备邮件和模型 secrets
+
+至少要在 GitHub 仓库 `Settings -> Secrets and variables -> Actions -> Secrets` 里配置：
+
+1. `LLM_API_KEY`
+2. `LLM_BASE_URL`（若你不是默认 OpenAI-compatible 地址）
+3. `LLM_MODEL`
+4. `RESEND_API_KEY`
+5. `EMAIL_TO`
+
+如果你还要更完整功能，再配：
+
+1. `LLM_FILTER_API_KEY`
+2. `LLM_FILTER_BASE_URL`
+3. `LLM_FILTER_MODEL`
+4. `TAVILY_API_KEY`
+5. `SEMANTIC_SCHOLAR_API_KEY`
+6. `CLOUDFLARE_ACCOUNT_ID`
+7. `CLOUDFLARE_API_TOKEN`
+8. `D1_DATABASE_ID`
+9. `FEEDBACK_ENDPOINT_BASE_URL`
+10. `FEEDBACK_LINK_SIGNING_SECRET`
+
+#### 第 3 步：准备 Actions variables
+
+在 `Settings -> Secrets and variables -> Actions -> Variables` 里建议设置：
+
+1. `SEED_STATE_BRANCH`
+   默认可不填，程序会用 `memory-state`
+2. `SEMANTIC_MEMORY_ENABLED`
+3. `SEMANTIC_SEEN_TTL_DAYS`
+4. `SEMANTIC_MEMORY_MAX_IDS`
+5. `FEEDBACK_TOKEN_TTL_DAYS`
+6. `FEEDBACK_REVIEWER`
+
+#### 第 4 步：首次手动跑一次 Daily Digest
+
+在 GitHub Actions 页面手动触发：
+
+1. 选择 `Daily Paper Digest`
+2. 先用 `dry_run=true` 验证
+3. 确认报告、artifact、日志正常后，再跑一次 `dry_run=false`
+
+第一次非 dry run 后：
+
+1. 如果 state 分支不存在，workflow 会自己初始化
+2. 后面每天会在这个分支上持续更新 `memory.json`
+
+#### 第 5 步：确认定时任务
+
+当前默认 cron：
+
+1. `daily-digest.yml`：`0 3 * * *`
+2. `apply-feedback-queue.yml`：`30 */6 * * *`
+
+它们都是 **UTC**。
+
+如果你要改成自己的时区，就直接改 workflow 里的 cron。
+
+### 远程每天发送时，系统每天会发生什么
+
+每天的链路可以概括成：
+
+1. GitHub Actions 定时触发 `daily-digest.yml`
+2. workflow 从 state 分支恢复昨天的 `memory.json` / `seeds.json`
+3. 跑 `main.py`
+4. 发送邮件
+5. 把新的 `memory.json` 推回 state 分支
+
+如果用户点了 👍 / 👎：
+
+1. 反馈先落到 D1
+2. `apply-feedback-queue.yml` 定时拉取这些事件
+3. 写回 `seeds.json`
+4. 之后的推荐候选开始变化
+
+### 最小远程部署建议
+
+如果你只想先实现“每天自动发邮件”，其实只需要：
+
+1. 配好 `LLM_*`
+2. 配好 `RESEND_API_KEY`
+3. 配好 `EMAIL_TO`
+4. 启用 `daily-digest.yml`
+
+这时：
+
+1. 能定时生成 digest
+2. 能定时发邮件
+3. `memory.json` 也能持续累积
+
+但还没有 feedback 闭环。
+
+如果你要 feedback 闭环，再额外加：
+
+1. Cloudflare Worker
+2. D1
+3. `apply-feedback-queue.yml`
 
 ---
 
