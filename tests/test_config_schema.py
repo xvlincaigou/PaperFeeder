@@ -123,6 +123,53 @@ class UserPersonalizationFileTests(unittest.TestCase):
             self.assertEqual(loaded.enabled_blogs, ["openai", "huggingface"])
             self.assertEqual(loaded.custom_blogs["my_lab"]["website"], "https://example.com/blog/")
 
+    def test_max_blog_posts_from_yaml(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = Path(tmp) / "config.yaml"
+            cfg.write_text(
+                "max_blog_posts: 4\n"
+                "email_to: x@y.z\n",
+                encoding="utf-8",
+            )
+            loaded = Config.from_yaml(str(cfg))
+            self.assertEqual(loaded.max_blog_posts, 4)
+
+
+class BlogFilteringTests(unittest.TestCase):
+    def test_blog_keyword_filter_and_cap(self) -> None:
+        from paperfeeder.models import Paper, PaperSource
+        from paperfeeder.pipeline.runner import filter_blog_posts
+
+        config = Config(
+            keywords=["alignment", "reasoning"],
+            exclude_keywords=["product"],
+            max_blog_posts=2,
+        )
+        posts = [
+            Paper(
+                title="Alignment monitoring in coding agents",
+                abstract="alignment research notes",
+                url="https://example.com/1",
+                source=PaperSource.MANUAL,
+            ),
+            Paper(
+                title="Reasoning evals in frontier models",
+                abstract="reasoning benchmark",
+                url="https://example.com/2",
+                source=PaperSource.MANUAL,
+            ),
+            Paper(
+                title="Product launch",
+                abstract="new product announcement",
+                url="https://example.com/3",
+                source=PaperSource.MANUAL,
+            ),
+        ]
+
+        filtered = filter_blog_posts(posts, config)
+        self.assertEqual(len(filtered), 2)
+        self.assertEqual([paper.url for paper in filtered], ["https://example.com/1", "https://example.com/2"])
+
 
 class FeedbackEmailAttachmentPathsTests(unittest.TestCase):
     def test_modes(self) -> None:

@@ -129,6 +129,7 @@ class Config:
 
     blogs_enabled: bool = True
     blog_days_back: int = 1
+    max_blog_posts: int = 5
     enabled_blogs: Optional[List[str]] = None
     custom_blogs: Optional[Dict[str, Dict[str, Any]]] = field(default_factory=dict)
 
@@ -214,6 +215,7 @@ class Config:
             "semantic_memory_max_ids": os.getenv("SEMANTIC_MEMORY_MAX_IDS"),
             "blogs_enabled": os.getenv("BLOGS_ENABLED"),
             "blog_days_back": os.getenv("BLOG_DAYS_BACK"),
+            "max_blog_posts": os.getenv("MAX_BLOG_POSTS"),
         }
 
         for key, value in env_overrides.items():
@@ -231,6 +233,7 @@ class Config:
                 config_data[key] = value.lower() not in ("false", "0", "no", "off")
             elif key in (
                 "blog_days_back",
+                "max_blog_posts",
                 "semantic_scholar_max_results",
                 "semantic_seen_ttl_days",
                 "semantic_memory_max_ids",

@@ -90,6 +90,25 @@ class PaperSummarizer:
         )
         return cleaned
 
+    @staticmethod
+    def _strip_secondary_heading_counts(content: str) -> str:
+        if not content:
+            return content
+
+        cleaned = re.sub(
+            r"(值得知道但暂不主推)\s*[（\(][^）\)]{0,20}[）\)]",
+            r"\1",
+            content,
+            flags=re.IGNORECASE,
+        )
+        cleaned = re.sub(
+            r"(Worth Knowing, Not Main Picks)\s*[（\(][^）\)]{0,20}[）\)]",
+            r"\1",
+            cleaned,
+            flags=re.IGNORECASE,
+        )
+        return cleaned
+
     def _build_prompt(
         self,
         papers: list[Paper],
@@ -259,6 +278,7 @@ Critical requirements:
             content = await self.client.achat(messages, max_tokens=8000)
             content = self._strip_skip_sections(content)
             content = self._strip_raw_separators(content)
+            content = self._strip_secondary_heading_counts(content)
             content = self._split_badge_and_title_lines(content)
             all_items = actual_papers + actual_blogs
             return self._wrap_html(content, all_items, actual_blogs)
@@ -331,7 +351,7 @@ Critical requirements:
                 box-shadow: 0 4px 14px rgba(148, 163, 184, 0.08);
             }}
             .content section:first-of-type {{
-                padding: 16px 18px 18px;
+                padding: 18px 28px 20px;
             }}
             .content section + section {{ margin-top: 18px; }}
             .content h2 {{
@@ -378,7 +398,7 @@ Critical requirements:
                 .header h1 {{ font-size: 1.75rem; }}
                 .content {{ padding: 10px 3px 14px; }}
                 .content section {{ padding: 12px 10px; border-radius: 16px; }}
-                .content section:first-of-type {{ padding: 14px 14px 16px; }}
+                .content section:first-of-type {{ padding: 16px 18px 18px; }}
                 .content h2 {{ font-size: 0.98rem; margin: 26px 0 16px; }}
             }}
         </style>

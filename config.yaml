@@ -34,6 +34,7 @@ semantic_scholar_enabled: true
 semantic_scholar_max_results: 20
 blogs_enabled: true
 blog_days_back: 7
+max_blog_posts: 3
 
 # State paths
 semantic_scholar_seeds_path: "state/semantic/seeds.json"

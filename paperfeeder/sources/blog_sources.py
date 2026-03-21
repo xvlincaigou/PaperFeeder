@@ -1,7 +1,7 @@
 """
 Blog source fetcher via RSS/Atom feeds.
 Fetches from AI research blogs, tech company blogs, and individual researchers.
-Blog posts marked as 'priority' skip filtering and go directly to synthesis.
+All fetched blog posts go through the blog prefilter before synthesis.
 """
 
 from __future__ import annotations
@@ -124,7 +124,7 @@ class BlogPost:
     source_name: str
     published_date: Optional[datetime] = None
     author: Optional[str] = None
-    priority: bool = False  # If True, skip filtering
+    priority: bool = False
     
     def to_paper(self) -> Paper:
         """Convert to Paper object for unified processing."""
@@ -140,8 +140,6 @@ class BlogPost:
             notes=f"From: {self.source_name}",
         )
         
-        # Mark as priority for skipping filters
-        paper.skip_filter = self.priority
         paper.is_blog = True
         paper.blog_source = self.source_name
         
@@ -153,7 +151,7 @@ class BlogSource(BaseSource):
     Fetch blog posts from RSS/Atom feeds.
     
     Usage:
-        # Use default priority blogs
+        # Use default configured blogs
         source = BlogSource()
         posts = await source.fetch(days_back=7)
         
@@ -180,7 +178,7 @@ class BlogSource(BaseSource):
         Initialize BlogSource.
         
         Args:
-            enabled_blogs: List of blog keys to enable. If None, use all priority blogs.
+            enabled_blogs: List of blog keys to enable. If None, use all configured blogs.
             custom_blogs: Additional custom blog configurations.
             include_non_priority: Whether to include non-priority blogs.
         """
@@ -192,7 +190,6 @@ class BlogSource(BaseSource):
         # Add default blogs
         for key, config in PRIORITY_BLOGS.items():
             if enabled_blogs is None:
-                # Default: only priority blogs
                 if config.get("priority", False) or include_non_priority:
                     self.blogs[key] = config
             elif key in enabled_blogs:
@@ -242,9 +239,7 @@ class BlogSource(BaseSource):
         # Convert to Paper objects
         papers = [post.to_paper() for post in all_posts]
         
-        # Separate priority and non-priority
-        priority_count = sum(1 for p in papers if getattr(p, 'skip_filter', False))
-        print(f"   ✅ Found {len(papers)} blog posts ({priority_count} priority, {len(papers) - priority_count} normal)")
+        print(f"   ✅ Found {len(papers)} blog posts")
         
         return papers
     
@@ -427,7 +422,6 @@ class JinaReaderSource(BaseSource):
                     url=url,
                     source=PaperSource.MANUAL,
                 )
-                paper.skip_filter = True
                 paper.is_blog = True
                 papers.append(paper)
                 
@@ -446,12 +440,12 @@ async def fetch_blog_posts(
     days_back: int = 7,
 ) -> tuple[List[Paper], List[Paper]]:
     """
-    Fetch blog posts and separate into priority and normal.
+    Fetch blog posts and return them in a single prefilterable pool.
     
     Returns:
-        (priority_papers, normal_papers)
-        - priority_papers: Skip filtering, go directly to synthesis
-        - normal_papers: Go through normal filtering pipeline
+        ([], all_posts)
+        - first list kept empty for backward compatibility
+        - second list contains all fetched blog posts to be prefiltered upstream
     """
     # Get enabled blogs from config
     enabled_blogs = getattr(config, 'enabled_blogs', None)
@@ -465,11 +459,7 @@ async def fetch_blog_posts(
     
     all_posts = await source.fetch(days_back=days_back)
     
-    # Separate priority and normal
-    priority_papers = [p for p in all_posts if getattr(p, 'skip_filter', False)]
-    normal_papers = [p for p in all_posts if not getattr(p, 'skip_filter', False)]
-    
-    return priority_papers, normal_papers
+    return [], all_posts
 
 
 # =============================================================================
@@ -482,7 +472,7 @@ if __name__ == "__main__":
         print("Blog Source Test")
         print("=" * 60)
         
-        # Test with priority blogs only
+        # Test with selected blogs
         source = BlogSource(
             enabled_blogs=["openai", "anthropic", "karpathy", "lilianweng"],
         )
@@ -491,8 +481,7 @@ if __name__ == "__main__":
         
         print(f"\n📊 Results:")
         for paper in papers[:10]:
-            priority = "🔥" if getattr(paper, 'skip_filter', False) else "  "
-            print(f"  {priority} {paper.title[:60]}...")
+            print(f"  {paper.title[:60]}...")
             print(f"      URL: {paper.url}")
             print(f"      From: {getattr(paper, 'blog_source', 'Unknown')}")
             print()

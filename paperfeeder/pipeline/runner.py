@@ -205,11 +205,27 @@ async def fetch_blogs(config: Config, days_back: int = 7) -> tuple[List[Paper], 
         include_non_priority=True,
     )
     all_posts = await source.fetch(days_back=getattr(config, "blog_days_back", days_back), max_posts_per_blog=5)
-    priority_posts = [paper for paper in all_posts if getattr(paper, "skip_filter", False)]
-    normal_posts = [paper for paper in all_posts if not getattr(paper, "skip_filter", False)]
-    print(f"   Priority blogs (skip filter): {len(priority_posts)}")
-    print(f"   Normal blogs (go through filter): {len(normal_posts)}")
-    return priority_posts, normal_posts
+    print(f"   Blogs fetched before filtering: {len(all_posts)}")
+    return [], all_posts
+
+
+def filter_blog_posts(posts: List[Paper], config: Config) -> List[Paper]:
+    from paperfeeder.pipeline.filters import KeywordFilter
+
+    if not posts:
+        return []
+
+    print(f"\nFiltering {len(posts)} blogs...")
+    keyword_filter = KeywordFilter(keywords=config.keywords, exclude_keywords=config.exclude_keywords)
+    filtered = keyword_filter.filter(posts)
+    print(f"   Blog prefilter (exclude + keyword): {len(filtered)} posts matched")
+
+    max_blog_posts = max(0, int(getattr(config, "max_blog_posts", 5) or 0))
+    if max_blog_posts and len(filtered) > max_blog_posts:
+        filtered = filtered[:max_blog_posts]
+        print(f"   Blog cap applied: keeping top {len(filtered)} posts")
+
+    return filtered
 
 
 async def filter_papers_coarse(papers: List[Paper], config: Config) -> List[Paper]:
@@ -398,7 +414,7 @@ async def run_pipeline(
             print("   Paper fetching disabled")
 
         priority_blogs, normal_blogs = await fetch_blogs(config, days_back=7)
-        all_blogs = priority_blogs + normal_blogs
+        all_blogs = filter_blog_posts(priority_blogs + normal_blogs, config)
 
         if not papers and not all_blogs:
             print("No papers or blogs found. Exiting.")

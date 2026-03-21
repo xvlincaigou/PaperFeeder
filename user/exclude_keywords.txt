@@ -22,3 +22,27 @@ fpga
 accelerator
 compiler
 inference engine
+
+# Blog commercial/product noise
+product announcement
+announcement
+launch
+release notes
+pricing
+enterprise
+customer story
+customer stories
+partner
+partnership
+case study
+webinar
+event recap
+funding
+sales
+marketing
+press release
+general availability
+ga
+preview release
+api update
+feature update

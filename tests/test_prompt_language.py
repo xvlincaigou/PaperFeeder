@@ -21,6 +21,7 @@ class PromptLanguageTests(unittest.TestCase):
         self.assertIn("Use a stable 4-section report structure in this order", prompts["user"])
         self.assertIn("Worth Knowing, Not Main Picks", prompts["user"])
         self.assertIn("every remaining paper in today's paper pool", prompts["user"])
+        self.assertIn("do not append counts in parentheses", prompts["user"])
         self.assertIn("single compact sentence", prompts["user"])
         self.assertIn("Judgment Summary", prompts["user"])
         self.assertIn("3 to 4 short bullets", prompts["user"])
@@ -41,6 +42,7 @@ class PromptLanguageTests(unittest.TestCase):
         self.assertIn("最终报告优先使用固定的 4 个一级 section", prompts["user"])
         self.assertIn("值得知道但暂不主推", prompts["user"])
         self.assertIn("剩下没有展开深读的论文", prompts["user"])
+        self.assertIn("不要在标题后面加括号", prompts["user"])
         self.assertIn("每篇严格控制为一句短评", prompts["user"])
         self.assertIn("今日判断摘要", prompts["user"])
         self.assertIn("3 到 4 个短 bullet", prompts["user"])
@@ -77,6 +79,13 @@ class PromptLanguageTests(unittest.TestCase):
         content = '<p><span class="badge">RL · 文本反馈</span><a href="https://example.com">Example Title</a></p>'
         cleaned = summarizer._split_badge_and_title_lines(content)
         self.assertIn("</span><br><a ", cleaned)
+
+    def test_strip_secondary_heading_counts_removes_parenthesized_counts(self) -> None:
+        summarizer = PaperSummarizer(api_key="test", prompt_language="zh-CN")
+        content = "<section><h3>值得知道但暂不主推（4 篇）</h3><p>短评</p></section>"
+        cleaned = summarizer._strip_secondary_heading_counts(content)
+        self.assertIn("值得知道但暂不主推</h3>", cleaned)
+        self.assertNotIn("（4 篇）", cleaned)
 
 if __name__ == "__main__":
     unittest.main()
