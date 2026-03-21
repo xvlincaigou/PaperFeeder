@@ -1,126 +1,158 @@
 <h1 align="left">
-	<img src="icon.png" alt="PaperFeeder icon" width="44" style="vertical-align: middle; margin-right: 10px;" />
-	<span style="vertical-align: middle;">PaperFeeder</span>
+  <img src="icon.png" alt="PaperFeeder icon" width="44" style="vertical-align: middle; margin-right: 10px;" />
+  <span style="vertical-align: middle;">PaperFeeder</span>
 </h1>
 
 > A research intelligence agent pipeline for daily paper and blog triage to your email inbox.
 
-PaperFeeder is a research intelligence pipeline for daily paper and blog triage. It combines multi-source collection, LLM-assisted screening, PDF-aware summarization, Semantic Scholar personalization, and a closed-loop feedback system into one deployable workflow.
-
 **中文说明：** [README.zh-CN.md](README.zh-CN.md)
 
-## What PaperFeeder Actually Is
+## Product
 
-PaperFeeder is not just a script that emails arXiv links.
+PaperFeeder is a lightweight research intelligence system for people who do not want to manually skim hundreds of links every day.
 
-It is designed as a lightweight research operations system for individual researchers, small labs, and technical teams that need to:
+It is built for a simple outcome:
 
-1. continuously ingest high-volume research content from multiple sources
-2. reduce the candidate set with explicit preferences plus LLM judgment
-3. generate a readable, opinionated digest instead of a raw dump of links
+1. ingest high-volume paper and blog streams
+2. reduce them into a small, high-signal candidate set
+3. generate an opinionated digest instead of a raw feed dump
 4. remember what has already been shown recently
-5. turn explicit feedback into better future recommendations
-6. run either locally or as a remote scheduled service on GitHub Actions
+5. improve future recommendations from explicit feedback
+6. run either locally or as a remote scheduled service
 
-## Why This Approach Is Different
+What makes it more than a paper-summary script is the layering:
 
-Most paper-digest tooling stops at keyword alerts or naive summarization. PaperFeeder is built around a stronger workflow:
+| Layer | What it adds |
+|------|--------------|
+| Multi-source collection | arXiv, Hugging Face daily papers, Semantic Scholar recommendations, curated blogs, optional manual sources |
+| Multi-stage selection | keyword gating, coarse LLM filtering, external signal enrichment, fine reranking |
+| PDF-aware synthesis | summaries can use PDFs when available, not only titles and abstracts |
+| Stateful personalization | short-term anti-repetition memory is separated from long-term preference steering |
+| Explicit feedback loop | per-item feedback updates future recommendation inputs |
+| Deployable operations | local dry-runs, debug fixtures, GitHub Actions scheduling, Cloudflare Worker + D1 feedback path |
 
-| Layer | What it does | Why it matters |
-|------|--------------|----------------|
-| Source aggregation | Pulls from arXiv, Hugging Face daily papers, Semantic Scholar recommendations, manual inputs, and curated blogs | Avoids relying on a single source of novelty |
-| Multi-stage selection | Uses keyword gating, coarse LLM filtering, Tavily-based external signal enrichment, and fine LLM ranking | Reduces noise before report generation |
-| PDF-aware synthesis | Reads PDFs when available instead of relying only on abstracts | Produces more grounded and useful summaries |
-| Personalization state | Separates short-term memory from long-term positive/negative seeds | Helps freshness and preference steering without conflating the two |
-| Explicit feedback loop | Converts per-item 👍 / 👎 into structured updates to `seeds.json` | Makes the system adapt over time instead of staying static |
-| Remote operations | Supports local runs, dry runs, debug fixtures, and GitHub Actions scheduling | Works as both a dev tool and a persistent service |
-
-## Core Capabilities
+Core capabilities:
 
 | Capability | Details |
 |-----------|---------|
-| Personalized candidate generation | User-editable interests, keywords, excluded terms, arXiv categories, and curated blog lists under `user/` |
-| Semantic Scholar steering | Positive and negative seed papers influence future recommendation fetches |
-| Anti-repetition memory | Recently shown items are suppressed through `state/semantic/memory.json` |
-| Two-stage LLM filtering | Stage 1 filters by title and abstract; Stage 2 reranks using external signals |
-| External signal enrichment | Tavily research adds context such as code availability, community discussion, and implementation signals |
-| Better report writing | The summarizer can use PDFs, supports prompt language packs, and produces HTML suitable for email and web viewing |
-| One-click feedback | Email and web viewer feedback links go through Cloudflare Worker + D1 |
-| Reproducible artifacts | Each run exports manifests and feedback templates under `artifacts/` |
-| Remote scheduling | GitHub Actions can run the digest, persist state, and periodically apply queued feedback |
+| Personalized candidate generation | user-editable interests, keywords, excluded terms, arXiv categories, and curated blogs under `user/` |
+| Semantic Scholar steering | positive and negative seed papers influence recommendation fetches |
+| Anti-repetition memory | `state/semantic/memory.json` suppresses recently shown items |
+| Two-stage LLM filtering | stage 1 trims the pool; stage 2 reranks after external research |
+| External signal enrichment | Tavily adds implementation, community, and reproducibility signals |
+| Better digest writing | prompt language packs, PDF-aware inputs, HTML output for email and web |
+| One-click feedback | email and web viewer links go through Cloudflare Worker + D1 |
+| Reproducible artifacts | each run exports manifests and feedback templates under `artifacts/` |
 
-## Pipeline At A Glance
+## Method
 
-The end-to-end method is:
+PaperFeeder deliberately separates candidate generation, ranking, reporting, freshness, and preference learning.
 
-1. collect candidates from papers and blogs
-2. apply keyword and exclusion rules
-3. run coarse LLM filtering on the surviving set
-4. enrich the shortlisted set with external signals
-5. run fine LLM filtering to decide what is worth reading
-6. read PDFs when available and generate a polished digest
-7. persist short-term memory for anti-repetition
-8. collect explicit 👍 / 👎 feedback
-9. write that feedback back into long-term Semantic Scholar seeds
+### End-to-End Pipeline
 
-That is the core idea behind PaperFeeder: separate freshness, preference learning, and report generation into distinct layers so the system stays understandable, debuggable, and extensible.
+1. Collect candidates from papers and blogs.
+2. Apply keyword and exclusion rules.
+3. Run coarse LLM filtering on title and abstract.
+4. Enrich shortlisted papers with external signals.
+5. Run fine LLM reranking using both content and signals.
+6. Read PDFs when available and generate a polished digest.
+7. Send the digest by email and optionally publish a web-view copy.
+8. Persist short-term memory for anti-repetition.
+9. Convert explicit feedback into future recommendation steering.
 
-## Repository Layout
+### State Model
+
+| State | File / store | Purpose |
+|------|---------------|---------|
+| Short-term memory | `state/semantic/memory.json` | suppress recently seen items so the digest stays fresh |
+| Long-term preferences | `state/semantic/seeds.json` | store positive / negative Semantic Scholar seed IDs |
+| Per-run artifacts | `artifacts/run_feedback_manifest_*.json`, `artifacts/semantic_feedback_template_*.json` | map run items to feedback actions and offline review |
+| Remote feedback queue | Cloudflare D1 | store pending 👍 / 👎 events before they are applied to seeds |
+
+The distinction is important:
+
+1. `memory.json` means “show this less because it was seen recently”
+2. `seeds.json` means “recommend more or less of this kind of paper in the future”
+
+Neither file changes model weights. They only change the candidate pool and recommendation inputs.
+
+### Repository Map
 
 ```text
 PaperFeeder/
 ├── paperfeeder/          # Main Python package
-├── scripts/              # Bootstrap and feedback helper scripts
-├── cloudflare/           # Feedback worker and D1 schema
-├── state/semantic/       # Persistent personalization state
+├── scripts/              # Bootstrap and feedback helpers
+├── cloudflare/           # Worker source and D1 schema
+├── state/semantic/       # Persistent memory and seeds
 ├── artifacts/            # Per-run generated manifests/templates
-├── user/                 # User-editable text profiles and prompt snippets
+├── user/                 # User-editable profiles, keywords, prompt text, blogs
 ├── tests/                # Test suite
-├── config.yaml           # Project defaults
+├── config.yaml           # Main project configuration
+├── icon.png              # README / project icon
 └── main.py               # Main digest entrypoint
 ```
 
-## What Each Directory Means
+Key files:
 
-`paperfeeder/`
+1. `paperfeeder/pipeline/runner.py`: orchestrates the full pipeline
+2. `paperfeeder/pipeline/filters.py`: keyword filter plus coarse/fine LLM filtering
+3. `paperfeeder/pipeline/summarizer.py`: report synthesis and HTML wrapping
+4. `paperfeeder/pipeline/researcher.py`: Tavily-based external signal enrichment
+5. `paperfeeder/semantic/memory.py`: anti-repetition memory store
+6. `paperfeeder/cli/apply_feedback.py`: apply offline, queued, or D1 feedback into seeds
+7. `cloudflare/feedback_worker.js`: one-click feedback collection and run viewer endpoint
 
-- All real application code lives here now.
-- Flat, obvious modules at the top: `models.py` (papers/authors), `email.py` (senders), `chat.py` (OpenAI-style chat client).
-- The main pipeline is under `paperfeeder/pipeline/runner.py`.
-- Feedback apply CLI lives in `paperfeeder/cli/apply_feedback.py`.
+## Configuration And Local Use
 
-`state/semantic/`
+### What You Need
 
-- `state/semantic/seeds.json` stores long-lived positive and negative Semantic Scholar seed IDs.
-- `state/semantic/memory.json` stores recently seen paper keys so repeated papers can be suppressed.
-- This is runtime state, not source code.
+| Component | Required | Why |
+|----------|----------|-----|
+| LLM API | Yes | digest synthesis and, if enabled, LLM filtering |
+| Email provider | Optional for local preview, required for real email delivery | send digest emails |
+| Tavily API | Optional but recommended | external signal enrichment |
+| Semantic Scholar API | Strongly recommended | better ID resolution for personalization and feedback links |
+| Cloudflare Worker + D1 | Optional | one-click remote feedback loop |
 
-`artifacts/`
-
-- This contains generated run outputs such as `run_feedback_manifest_*.json` and `semantic_feedback_template_*.json`.
-- It is disposable runtime output and is ignored by git.
-
-`cloudflare/`
-
-- `cloudflare/feedback_worker.js` is the only feedback worker source.
-- `cloudflare/d1_feedback_events.sql` is the D1 schema.
-
-## Setup
+### Local Setup
 
 ```bash
 bash scripts/bootstrap.sh
 source .venv/bin/activate
 ```
 
-Then fill in `.env`, edit `config.yaml` for toggles and paths, edit `user/blogs.yaml` for blog sources, and edit files under `user/` for research preferences. The common user files are `user/blogs.yaml`, `user/research_interests.txt`, `user/keywords.txt`, `user/exclude_keywords.txt`, `user/arxiv_categories.txt`, and `user/prompt_addon.txt`.
+Then:
 
-That local `.env` is mainly for local development and local testing. For GitHub Actions deployments, use GitHub Secrets and Variables instead; the workflows should not depend on a repository `.env` file.
+1. copy `.env.example` to `.env`
+2. fill in local credentials for LLM, email, and optional feedback services
+3. edit `config.yaml` for toggles, limits, and paths
+4. edit `user/blogs.yaml` for blog sources
+5. edit files under `user/` for interests, keywords, exclusions, categories, and prompt additions
 
-If you want the generated report prompt to be English-first instead of Chinese-first, set `prompt_language` in `config.yaml` to `en-US`.
+Local `.env` is for local development and local testing. GitHub Actions deployments should use GitHub Secrets and Variables instead.
 
-If you want a different starting point, look at the preset profiles under `user/examples/profiles/` and either copy the files you want into `user/`, or point `config.yaml` at a preset path.
+### User-Editable Files
 
-## How To Run
+| File | What it controls |
+|------|------------------|
+| `config.yaml` | runtime toggles, fetch windows, path settings, prompt language, state behavior |
+| `user/blogs.yaml` | blog source selection and custom feeds |
+| `user/research_interests.txt` | research persona / long-form interests |
+| `user/keywords.txt` | positive keyword hints |
+| `user/exclude_keywords.txt` | noisy topics to suppress |
+| `user/arxiv_categories.txt` | arXiv category scope |
+| `user/prompt_addon.txt` | extra instruction block injected into prompts |
+
+Config precedence:
+
+1. `config.yaml`
+2. `user/blogs.yaml`
+3. environment variables
+4. `user/research_interests.txt`, `user/prompt_addon.txt`, `user/keywords.txt`, `user/exclude_keywords.txt`, and `user/arxiv_categories.txt`
+
+Preset profiles are available under `user/examples/profiles/`.
+
+### Common Commands
 
 Main digest:
 
@@ -129,28 +161,17 @@ python main.py --dry-run
 python main.py --days 3
 ```
 
-`--dry-run` writes `report_preview.html` locally and may generate feedback files under `artifacts/`.
-
-**Lightweight debug (one paper, no crawl):** use a JSON fixture instead of fetching arXiv/HF/S2. Skips keyword+LLM filters and Tavily enrichment. **By default, `--debug-sample` does not call the main digest LLM** — it sends a small fixed HTML body (good for testing email, feedback, D1). Copy `tests/debug_sample.example.json` to `tests/debug_sample.json` and edit (or rely on the bundled example when no override exists).
+Debug mode with a fixed JSON fixture:
 
 ```bash
-# Stub HTML only, no main digest LLM; local preview (omit --dry-run to send email)
 python main.py --debug-sample --dry-run
-
-# Same stub, real email via Resend
 python main.py --debug-sample
-
-# Debug sample but use the real summarizer LLM for the report body
 python main.py --debug-sample --debug-llm-report --dry-run
-
-# Full fetch, but stub report body (no main digest LLM)
 python main.py --debug-minimal-report --dry-run
-
-# Custom fixture path
 python main.py --debug-sample --debug-sample-path path/to/papers.json --dry-run
 ```
 
-Optional: `--debug-write-memory` updates `state/semantic/memory.json` (default in debug sample mode is to skip it).
+Optional: `--debug-write-memory` updates `state/semantic/memory.json` during debug sample mode.
 
 Apply reviewed feedback from a manifest:
 
@@ -163,202 +184,36 @@ Apply pending feedback from Cloudflare D1:
 
 ```bash
 python -m paperfeeder.cli.apply_feedback --from-d1 --manifest-file artifacts/run_feedback_manifest_<run_id>.json --manifests-dir artifacts --dry-run
+python -m paperfeeder.cli.apply_feedback --from-d1 --manifest-file artifacts/run_feedback_manifest_<run_id>.json --manifests-dir artifacts
 ```
 
-There is also a wrapper if you prefer scripts:
+There is also a wrapper script:
 
 ```bash
 python scripts/semantic_feedback_apply.py --manifest-file artifacts/run_feedback_manifest_<run_id>.json --dry-run
 ```
 
-## Configuration
+## GitHub Actions Auto Deployment
 
-The main configuration lives in `config.yaml`. Use it for toggles, fetch windows, and paths. Use `user/blogs.yaml` for blog selection and custom RSS feeds. Use other files under `user/` for research profile text, keywords, categories, and prompt additions. The semantic state paths are:
+If you want PaperFeeder to behave like a remote service, GitHub Actions is the main deployment path.
 
-```yaml
-semantic_scholar_seeds_path: "state/semantic/seeds.json"
-semantic_memory_path: "state/semantic/memory.json"
-```
-
-Config precedence is:
-
-1. `config.yaml`
-2. `user/blogs.yaml`
-3. environment variables
-4. `user/research_interests.txt`, `user/prompt_addon.txt`, `user/keywords.txt`, `user/exclude_keywords.txt`, and `user/arxiv_categories.txt`
-
-Each list file in `user/` uses one item per line. Blank lines and lines starting with `#` are ignored.
-
-## Preset Profiles
-
-Preset starting points live under `user/examples/profiles/`:
-
-- `frontier-ai-lab`
-- `interpretability-alignment`
-- `coding-agents-reasoning`
-- `multimodal-generative`
-
-Each profile contains a `research_interests.txt`, `keywords.txt`, `exclude_keywords.txt`, and `arxiv_categories.txt`.
-
-## Memory
-
-`memory` and `feedback` solve different problems.
-
-### What `memory.json` does
-
-`state/semantic/memory.json` exists to remember what the system has already shown you recently.
-
-It is used to:
-
-1. suppress repeated recommendations
-2. reduce near-duplicate daily digests
-3. keep the candidate set fresh across runs
-
-It is not a preference model and it does not fine-tune the LLM.
-
-### What `seeds.json` does
-
-`state/semantic/seeds.json` stores explicit positive and negative Semantic Scholar paper IDs.
-
-It is used to:
-
-1. steer Semantic Scholar recommendations toward papers like the ones you liked
-2. steer them away from papers you disliked
-
-So the distinction is:
-
-1. `memory.json` means “I have already seen this recently”
-2. `seeds.json` means “I explicitly like or dislike this kind of paper”
-
-### How they affect the daily digest
-
-On each run:
-
-1. the pipeline fetches candidates from arXiv, blogs, and optional Semantic Scholar recommendations
-2. `memory.json` suppresses recently seen items
-3. `seeds.json` influences which Semantic Scholar recommendations get fetched in the first place
-
-Neither file changes model weights. They only change the candidate pool.
-
-## Feedback
-
-Feedback is a separate loop from memory.
-
-### What feedback does
-
-Feedback turns explicit 👍 / 👎 events into updates to `seeds.json`.
-
-The flow is:
-
-1. `python main.py` generates a digest
-2. the run exports manifest/template files into `artifacts/`
-3. feedback links point to the worker in `cloudflare/`
-4. the worker writes events into D1
-5. `apply_feedback` converts those events into updates to `state/semantic/seeds.json`
-
-So feedback does not immediately rewrite today's report. It changes future recommendation inputs.
-
-### Core feedback configuration
-
-Copy `.env.example` → `.env` and focus on these first:
-
-| What | Where to set | Why it matters |
-|------|--------------|----------------|
-| **Worker URL** | `.env` → `FEEDBACK_ENDPOINT_BASE_URL` | Where email feedback links point |
-| **Signing secret** | `.env` + Worker → `FEEDBACK_LINK_SIGNING_SECRET` | Prevents forged feedback tokens |
-| **D1 access** | `.env` → `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `D1_DATABASE_ID` | Lets Python upload reports and read feedback |
-| **Semantic Scholar API** | `.env` → `SEMANTIC_SCHOLAR_API_KEY` | Improves `semantic_paper_id` resolution so feedback buttons appear |
-| **Feedback attachments** | `.env` → `FEEDBACK_EMAIL_ATTACHMENTS` | Controls whether manifest/template JSON files are attached to email |
-
-### Minimal Worker deployment
-
-```bash
-cd cloudflare
-cp wrangler.toml.example wrangler.toml
-# Edit wrangler.toml: set database_id from `wrangler d1 create paperfeeder-feedback`
-npx wrangler d1 execute paperfeeder-feedback --remote --file=d1_feedback_events.sql
-npx wrangler secret put FEEDBACK_LINK_SIGNING_SECRET
-npx wrangler deploy
-```
-
-Then set `FEEDBACK_ENDPOINT_BASE_URL` in `.env` to the deployed URL.
-
-The “Open Feedback Web Viewer” banner is optional. It is just a browser entry point to `/run?run_id=...`. The actual feedback loop is driven by per-item 👍 / 👎 links.
-
-## GitHub Actions
-
-This is the most important section if you want PaperFeeder to run remotely and send a daily digest automatically.
-
-There are two key workflows:
+### Workflow Roles
 
 | Workflow | Purpose |
 |----------|---------|
-| `.github/workflows/daily-digest.yml` | Runs the digest on a schedule, sends email, and persists `memory.json` |
-| `.github/workflows/apply-feedback-queue.yml` | Periodically merges D1 feedback into `seeds.json` |
+| `.github/workflows/daily-digest.yml` | run the digest on schedule, send email, persist `memory.json` |
+| `.github/workflows/apply-feedback-queue.yml` | periodically merge D1 feedback into `seeds.json` |
 
-### What each workflow does
+### Required Secrets And Variables
 
-#### `daily-digest.yml`
-
-By default it:
-
-1. runs every day at `00:01 UTC`, which is `08:01` China Standard Time
-2. loads `state/semantic/memory.json` and `state/semantic/seeds.json` from the state branch
-3. runs `python main.py`
-4. pushes updated `memory.json` back to the state branch
-
-This workflow is what makes remote daily email delivery work.
-
-#### `apply-feedback-queue.yml`
-
-By default it:
-
-1. runs every 3 days at `16:30 UTC` with `30 16 */3 * *`, which is `00:30` China Standard Time on the next day
-2. loads `seeds.json` from the state branch
-3. reads pending feedback from D1
-4. runs `python -m paperfeeder.cli.apply_feedback --from-d1`
-5. pushes updated `seeds.json` back to the state branch
-
-This workflow is what closes the feedback loop.
-
-### What the state branch is
-
-The workflows do not write runtime state back to `main`.
-
-Instead they use a dedicated branch:
-
-1. default: `memory-state`
-2. overrideable with the repo variable `SEED_STATE_BRANCH`
-
-That branch stores:
-
-1. `state/semantic/memory.json`
-2. `state/semantic/seeds.json`
-
-This keeps code and runtime state separate.
-
-### Minimal remote deployment for daily sending
-
-If your goal is “run remotely and send every day”, follow this order.
-
-#### 1. Push the repo to GitHub
-
-1. create your repo
-2. push the code
-3. enable GitHub Actions
-
-#### 2. Add required GitHub Secrets
-
-Use this mental model: local runs read `.env`; GitHub Actions runs read GitHub Secrets and Variables. Keep those two paths separate and do not commit your local `.env`.
-
-At minimum, set these in `Settings -> Secrets and variables -> Actions -> Secrets`:
+Required GitHub Secrets for minimal remote email delivery:
 
 1. `LLM_API_KEY`
 2. `LLM_MODEL`
 3. `RESEND_API_KEY`
 4. `EMAIL_TO`
 
-Common additional secrets:
+Common additional Secrets:
 
 1. `LLM_BASE_URL`
 2. `LLM_FILTER_API_KEY`
@@ -372,9 +227,7 @@ Common additional secrets:
 10. `FEEDBACK_ENDPOINT_BASE_URL`
 11. `FEEDBACK_LINK_SIGNING_SECRET`
 
-#### 3. Add GitHub Variables
-
-Recommended variables in `Settings -> Secrets and variables -> Actions -> Variables`:
+Recommended GitHub Variables:
 
 1. `SEED_STATE_BRANCH`
 2. `SEMANTIC_MEMORY_ENABLED`
@@ -383,70 +236,53 @@ Recommended variables in `Settings -> Secrets and variables -> Actions -> Variab
 5. `FEEDBACK_TOKEN_TTL_DAYS`
 6. `FEEDBACK_REVIEWER`
 
-#### 4. Run `Daily Paper Digest` manually once
+### Current Default Schedule
 
-Use `workflow_dispatch` first:
+| Workflow | UTC | China Standard Time |
+|----------|-----|---------------------|
+| `daily-digest.yml` | `1 0 * * *` | every day at 08:01 |
+| `apply-feedback-queue.yml` | `30 16 */3 * *` | every 3 days at 00:30 on the next day |
 
-1. run once with `dry_run=true`
-2. inspect artifacts and logs
-3. then run with `dry_run=false`
+GitHub Actions cron is based on UTC calendar time, not a strict every-72-hours timer. A pattern like `*/3` resets at month boundaries.
 
-The first non-dry-run execution will also initialize the state branch if needed.
+### First Remote Deployment
 
-#### 5. Confirm the schedule
+1. push the repo to GitHub and enable Actions
+2. add Secrets and Variables in the repository settings
+3. manually run `Daily Paper Digest` with `dry_run=true`
+4. inspect logs and artifacts
+5. run it once with `dry_run=false`
+6. confirm the state branch is created and updated
 
-Current defaults:
+State handling:
 
-1. `daily-digest.yml`: `1 0 * * *`
-2. `apply-feedback-queue.yml`: `30 16 */3 * *`
+1. workflows do not write runtime state back to `main`
+2. they use a dedicated state branch, defaulting to `memory-state`
+3. that branch stores `state/semantic/memory.json` and `state/semantic/seeds.json`
 
-Both are UTC. Change the cron expressions if you want a different time zone or cadence.
+### Remote Operating Modes
 
-Use this approach when customizing the schedule:
-
-1. pick the local time you actually want
-2. convert that time to UTC
-3. put the UTC value into the workflow `schedule.cron`
-
-Examples:
-
-1. If you are in China Standard Time (`UTC+8`) and want `daily-digest.yml` at 08:01 local time, use `1 0 * * *`
-2. If you want `apply-feedback-queue.yml` every 3 days at 00:30 China time, use `30 16 */3 * *`
-
-One important limitation: GitHub Actions cron is based on UTC calendar time, not a strict “every 72 hours” timer. A pattern like `*/3` means “every 3rd day of the month”, so the cadence resets at month boundaries. That is usually fine here. If you need an exact 72-hour interval, run the workflow daily and gate execution inside the script instead.
-
-### What happens every day in remote mode
-
-Each day:
-
-1. GitHub Actions triggers `daily-digest.yml`
-2. the workflow restores yesterday's `memory.json` / `seeds.json`
-3. it runs `main.py`
-4. it sends the email
-5. it writes the updated `memory.json` back to the state branch
-
-If readers submit feedback:
-
-1. events go into D1
-2. `apply-feedback-queue.yml` later merges them into `seeds.json`
-3. future Semantic Scholar recommendations change accordingly
-
-### Minimum setup if you only want remote daily email
-
-If feedback is not important yet, the minimum useful remote setup is:
+Minimum useful remote setup for daily email only:
 
 1. `LLM_*` secrets
 2. `RESEND_API_KEY`
 3. `EMAIL_TO`
 4. `daily-digest.yml`
 
-That already gives you:
+Full closed-loop setup:
 
-1. remote daily digest generation
-2. remote email delivery
-3. persistent `memory.json`
+1. everything above
+2. Cloudflare Worker deployment
+3. D1 database and credentials
+4. `apply-feedback-queue.yml`
 
-Add Cloudflare + D1 + `apply-feedback-queue.yml` later when you want the full feedback loop.
+In the full mode, the loop is:
+
+1. `daily-digest.yml` sends the digest
+2. readers submit feedback through email or web links
+3. events are stored in D1
+4. `apply-feedback-queue.yml` writes them back into `seeds.json`
+5. future Semantic Scholar recommendations change accordingly
 
 ## Tests
 
@@ -456,5 +292,5 @@ python -m unittest discover -s tests -p "test_*.py" -v
 
 ## Notes
 
-- `artifacts/` and `llm_filter_debug/` are ignored runtime output directories.
-- GitHub Actions also read and persist `state/semantic/seeds.json` and `state/semantic/memory.json` on the state branch; see **GitHub Actions, `seeds.json`, and what “memory” does** above.
+1. `artifacts/` and `llm_filter_debug/` are disposable runtime outputs.
+2. GitHub Actions persist `state/semantic/seeds.json` and `state/semantic/memory.json` on the state branch.
