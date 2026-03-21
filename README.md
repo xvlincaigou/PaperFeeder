@@ -5,7 +5,7 @@
 
 > A research intelligence agent pipeline for daily paper and blog triage to your email inbox.
 
-**PaperFeeder is email-first.** The digest email is the primary product surface; the web viewer, manifests, and feedback pipeline exist to support that inbox workflow rather than replace it.
+PaperFeeder is designed around an inbox workflow: the digest is delivered by email, while the web viewer, manifests, and feedback pipeline support review, iteration, and feedback collection around that core experience.
 
 **中文说明：** [README.zh-CN.md](README.zh-CN.md)
 
@@ -22,7 +22,7 @@ It is built for a simple outcome:
 5. improve future recommendations from explicit feedback
 6. run either locally or as a remote scheduled service
 
-The key product choice is deliberate: email is not a notification layer on top of the system. Email is the default delivery surface for the research brief itself.
+The product is intentionally centered on inbox delivery: email is the main delivery surface for the research brief, while the other components support that workflow.
 
 What makes it more than a paper-summary script is the layering:
 
