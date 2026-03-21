@@ -7,7 +7,7 @@
 
 **中文说明：** [README.zh-CN.md](README.zh-CN.md)
 
-## Product
+## Why PaperFeeder
 
 PaperFeeder is a lightweight research intelligence system for people who do not want to manually skim hundreds of links every day.
 
@@ -44,7 +44,7 @@ Core capabilities:
 | One-click feedback | email and web viewer links go through Cloudflare Worker + D1 |
 | Reproducible artifacts | each run exports manifests and feedback templates under `artifacts/` |
 
-## Method
+## How It Works
 
 PaperFeeder deliberately separates candidate generation, ranking, reporting, freshness, and preference learning.
 
@@ -102,7 +102,7 @@ Key files:
 6. `paperfeeder/cli/apply_feedback.py`: apply offline, queued, or D1 feedback into seeds
 7. `cloudflare/feedback_worker.js`: one-click feedback collection and run viewer endpoint
 
-## Configuration And Local Use
+## Local Setup And Configuration
 
 ### What You Need
 
@@ -193,7 +193,7 @@ There is also a wrapper script:
 python scripts/semantic_feedback_apply.py --manifest-file artifacts/run_feedback_manifest_<run_id>.json --dry-run
 ```
 
-## GitHub Actions Auto Deployment
+## Remote Deployment With GitHub Actions
 
 If you want PaperFeeder to behave like a remote service, GitHub Actions is the main deployment path.
 
