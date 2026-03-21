@@ -1,4 +1,9 @@
-# PaperFeeder
+<h1 align="left">
+	<img src="icon.png" alt="PaperFeeder icon" width="44" style="vertical-align: middle; margin-right: 10px;" />
+	<span style="vertical-align: middle;">PaperFeeder</span>
+</h1>
+
+> A research intelligence agent pipeline for daily paper and blog triage to your email inbox.
 
 PaperFeeder is a research intelligence pipeline for daily paper and blog triage. It combines multi-source collection, LLM-assisted screening, PDF-aware summarization, Semantic Scholar personalization, and a closed-loop feedback system into one deployable workflow.
 

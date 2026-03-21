@@ -1,4 +1,9 @@
-# PaperFeeder（中文说明）
+<h1 align="left">
+   <img src="icon.png" alt="PaperFeeder icon" width="44" style="vertical-align: middle; margin-right: 10px;" />
+   <span style="vertical-align: middle;">PaperFeeder（中文说明）</span>
+</h1>
+
+> A research intelligence agent pipeline for daily paper and blog triage to your email inbox.
 
 PaperFeeder 不是一个简单的“arXiv 邮件脚本”，而是一套面向研究者、研究团队和 AI Lab 的**研究情报流水线**：把多源采集、LLM 筛选、PDF 感知摘要、Semantic Scholar 个性化、以及显式 feedback 闭环整合到同一个可部署系统里。
 
