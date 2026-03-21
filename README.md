@@ -1,10 +1,66 @@
 # PaperFeeder
 
-PaperFeeder is a daily paper-and-blog digest pipeline with Semantic Scholar based personalization and a feedback loop.
+PaperFeeder is a research intelligence pipeline for daily paper and blog triage. It combines multi-source collection, LLM-assisted screening, PDF-aware summarization, Semantic Scholar personalization, and a closed-loop feedback system into one deployable workflow.
 
 **中文说明：** [README.zh-CN.md](README.zh-CN.md)
 
-## Final Layout
+## What PaperFeeder Actually Is
+
+PaperFeeder is not just a script that emails arXiv links.
+
+It is designed as a lightweight research operations system for individual researchers, small labs, and technical teams that need to:
+
+1. continuously ingest high-volume research content from multiple sources
+2. reduce the candidate set with explicit preferences plus LLM judgment
+3. generate a readable, opinionated digest instead of a raw dump of links
+4. remember what has already been shown recently
+5. turn explicit feedback into better future recommendations
+6. run either locally or as a remote scheduled service on GitHub Actions
+
+## Why This Approach Is Different
+
+Most paper-digest tooling stops at keyword alerts or naive summarization. PaperFeeder is built around a stronger workflow:
+
+| Layer | What it does | Why it matters |
+|------|--------------|----------------|
+| Source aggregation | Pulls from arXiv, Hugging Face daily papers, Semantic Scholar recommendations, manual inputs, and curated blogs | Avoids relying on a single source of novelty |
+| Multi-stage selection | Uses keyword gating, coarse LLM filtering, Tavily-based external signal enrichment, and fine LLM ranking | Reduces noise before report generation |
+| PDF-aware synthesis | Reads PDFs when available instead of relying only on abstracts | Produces more grounded and useful summaries |
+| Personalization state | Separates short-term memory from long-term positive/negative seeds | Helps freshness and preference steering without conflating the two |
+| Explicit feedback loop | Converts per-item 👍 / 👎 into structured updates to `seeds.json` | Makes the system adapt over time instead of staying static |
+| Remote operations | Supports local runs, dry runs, debug fixtures, and GitHub Actions scheduling | Works as both a dev tool and a persistent service |
+
+## Core Capabilities
+
+| Capability | Details |
+|-----------|---------|
+| Personalized candidate generation | User-editable interests, keywords, excluded terms, arXiv categories, and curated blog lists under `user/` |
+| Semantic Scholar steering | Positive and negative seed papers influence future recommendation fetches |
+| Anti-repetition memory | Recently shown items are suppressed through `state/semantic/memory.json` |
+| Two-stage LLM filtering | Stage 1 filters by title and abstract; Stage 2 reranks using external signals |
+| External signal enrichment | Tavily research adds context such as code availability, community discussion, and implementation signals |
+| Better report writing | The summarizer can use PDFs, supports prompt language packs, and produces HTML suitable for email and web viewing |
+| One-click feedback | Email and web viewer feedback links go through Cloudflare Worker + D1 |
+| Reproducible artifacts | Each run exports manifests and feedback templates under `artifacts/` |
+| Remote scheduling | GitHub Actions can run the digest, persist state, and periodically apply queued feedback |
+
+## Pipeline At A Glance
+
+The end-to-end method is:
+
+1. collect candidates from papers and blogs
+2. apply keyword and exclusion rules
+3. run coarse LLM filtering on the surviving set
+4. enrich the shortlisted set with external signals
+5. run fine LLM filtering to decide what is worth reading
+6. read PDFs when available and generate a polished digest
+7. persist short-term memory for anti-repetition
+8. collect explicit 👍 / 👎 feedback
+9. write that feedback back into long-term Semantic Scholar seeds
+
+That is the core idea behind PaperFeeder: separate freshness, preference learning, and report generation into distinct layers so the system stays understandable, debuggable, and extensible.
+
+## Repository Layout
 
 ```text
 PaperFeeder/

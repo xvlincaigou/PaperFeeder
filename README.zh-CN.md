@@ -1,8 +1,71 @@
 # PaperFeeder（中文说明）
 
-PaperFeeder 是一个**每日论文 + 博客摘要**流水线：用 **Semantic Scholar** 做个性化，并支持 **点赞/点踩反馈** 闭环。
+PaperFeeder 不是一个简单的“arXiv 邮件脚本”，而是一套面向研究者、研究团队和 AI Lab 的**研究情报流水线**：把多源采集、LLM 筛选、PDF 感知摘要、Semantic Scholar 个性化、以及显式 feedback 闭环整合到同一个可部署系统里。
 
 > 英文版说明见 [README.md](README.md)。
+
+---
+
+## 它到底是什么？
+
+如果用一句话概括，PaperFeeder 想解决的是：
+
+1. 每天有太多论文、博客、模型更新和研究笔记
+2. 你真正想要的不是“更多链接”，而是“更少但更准的候选集合”
+3. 你真正需要的不是“泛泛摘要”，而是“带判断、带优先级、能持续自我更新”的研究信息系统
+
+所以它不是只做摘要，而是把下面这些环节串起来：
+
+1. 多源抓取
+2. 多阶段筛选
+3. 外部信号增强
+4. PDF 级别的报告生成
+5. 短期 memory 去重
+6. 长期 feedback 偏好更新
+7. 本地调试与远程定时运行
+
+## 为什么这套方法不只是“RSS + 总结”
+
+很多论文邮件工具只做到两步：抓取内容，然后做一层摘要。PaperFeeder 刻意把方法做成更完整的 research ops workflow：
+
+| 层级 | 做什么 | 价值是什么 |
+|------|--------|------------|
+| 多源聚合 | 同时拉 arXiv、Hugging Face Daily Papers、Semantic Scholar 推荐、手动源、优先博客 | 避免只盯单一来源，减少视野偏差 |
+| 多阶段筛选 | 先关键词过滤，再做 coarse LLM filter，再用 Tavily 增强，再做 fine LLM ranking | 不把所有候选都直接丢给摘要模型，先降噪 |
+| PDF 感知摘要 | 有 PDF 时尽量基于全文，而不只看 abstract | 输出更扎实，不容易停留在标题党层面 |
+| 个性化状态 | 把短期去重 memory 和长期偏好 seeds 分开维护 | 既保证新鲜度，又保留长期研究方向 |
+| 显式反馈闭环 | 把 👍 / 👎 转成 `seeds.json` 里的正负样本 | 让系统随着你的反馈逐步校准 |
+| 远程运行能力 | 支持本地试跑、debug fixture、GitHub Actions 定时发送 | 既能开发调试，也能稳定托管 |
+
+## 核心能力一览
+
+| 能力 | 说明 |
+|------|------|
+| 个性化候选生成 | `user/` 下的研究兴趣、关键词、排除词、arXiv 分类、博客源可以直接控制候选池 |
+| Semantic Scholar 个性化 | 通过正负 seeds 持续影响未来推荐来源 |
+| Anti-repetition memory | 用 `state/semantic/memory.json` 抑制近期重复出现的内容 |
+| 两阶段 LLM 筛选 | 第一阶段看 title/abstract，第二阶段结合外部信号重新排序 |
+| 外部信号增强 | Tavily 补充 GitHub、社区讨论、实现线索等信息 |
+| 更扎实的 digest 生成 | 有 PDF 时走全文感知摘要，并支持中英文 prompt language packs |
+| 单条反馈闭环 | 邮件和网页里的 👍 / 👎 会进入 Worker + D1，再写回 seeds |
+| 可追溯运行产物 | 每次运行都能导出 manifest/template，方便审计和回放 |
+| 本地与远程双模式 | 既能 `--dry-run` 本地调试，也能用 GitHub Actions 远程定时运行 |
+
+## 方法链路（一眼看懂）
+
+PaperFeeder 的完整链路是：
+
+1. 从论文源和博客源收集候选
+2. 先用关键词与排除词做第一层过滤
+3. 用 coarse LLM filter 快速缩小候选集
+4. 用 Tavily 给入围内容补外部信号
+5. 用 fine LLM filter 决定真正值得进入报告的条目
+6. 有 PDF 时读取全文前若干页并生成 digest
+7. 把本次真正出现在报告里的内容写入短期 memory
+8. 收集用户的 👍 / 👎 反馈
+9. 把反馈写回长期 seeds，影响后续推荐
+
+核心思想其实很简单：把“新鲜度管理”、“长期偏好”、“报告生成”拆成三个独立层，这样系统既更可控，也更容易调试和扩展。
 
 ---
 
