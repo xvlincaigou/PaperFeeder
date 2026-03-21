@@ -4,7 +4,7 @@ permissions:
   contents: write
 
 on:
-  # Run daily at 00:01 UTC (08:01 China time)
+  # Run daily at 08:01 China Standard Time (00:01 UTC)
   schedule:
     - cron: '1 0 * * *'
   
