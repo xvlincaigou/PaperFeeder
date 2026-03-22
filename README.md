@@ -13,14 +13,16 @@ PaperFeeder is designed around an inbox workflow: the digest is delivered by ema
 
 <table>
   <tr>
-    <td align="center"><img src=".github/assets/1.png" alt="Digest overview" width="260" /></td>
-    <td align="center"><img src=".github/assets/2.png" alt="Blog pick detail" width="260" /></td>
-    <td align="center"><img src=".github/assets/3.png" alt="Paper pick detail" width="260" /></td>
+    <td align="center"><img src=".github/assets/1.png" alt="Overview and blog picks" width="195" /></td>
+    <td align="center"><img src=".github/assets/2.png" alt="Paper pick detail 1" width="195" /></td>
+    <td align="center"><img src=".github/assets/3.png" alt="Paper pick detail 2" width="195" /></td>
+    <td align="center"><img src=".github/assets/4.png" alt="Judgment summary" width="195" /></td>
   </tr>
   <tr>
-    <td align="center"><strong>1.</strong> Overview</td>
-    <td align="center"><strong>2.</strong> Blog pick detail</td>
+    <td align="center"><strong>1.</strong> Overview + blog picks</td>
+    <td align="center"><strong>2.</strong> Paper pick detail</td>
     <td align="center"><strong>3.</strong> Paper pick detail</td>
+    <td align="center"><strong>4.</strong> Judgment summary</td>
   </tr>
 </table>
 
