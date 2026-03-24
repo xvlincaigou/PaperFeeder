@@ -258,3 +258,4 @@ export default {
     return viewerShell("Not found", `<h1>404</h1><p class="muted">没有对应页面。</p>`, 404);
   },
 };
+

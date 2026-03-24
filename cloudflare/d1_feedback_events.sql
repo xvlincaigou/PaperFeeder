@@ -20,3 +20,4 @@ CREATE TABLE IF NOT EXISTS feedback_runs (
   created_at TEXT NOT NULL,
   report_html TEXT NOT NULL
 );
+

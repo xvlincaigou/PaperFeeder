@@ -15,3 +15,4 @@ compatibility_date = "2024-11-01"
 binding = "DB"
 database_name = "paperfeeder-feedback"
 database_id = "0c914290-4b5f-4c2d-a323-2b0458c9c92c"
+
