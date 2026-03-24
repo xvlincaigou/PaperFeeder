@@ -378,3 +378,4 @@ def create_default_config(path: str = "config.yaml"):
     config.to_yaml(path)
     print(f"Created default config at {path}")
     print("Please edit it and add your API keys as environment variables.")
+

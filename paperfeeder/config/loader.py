@@ -8,3 +8,4 @@ def load_config(path: str = "config.yaml") -> Config:
 
 
 __all__ = ["Config", "create_default_config", "load_config"]
+

@@ -17,3 +17,4 @@ __all__ = [
     "DEFAULT_FILTER_DEBUG_DIR",
     "DEFAULT_REPORT_PREVIEW_PATH",
 ]
+

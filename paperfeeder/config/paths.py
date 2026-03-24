@@ -31,3 +31,4 @@ class ProjectPaths:
     artifacts_dir: str = DEFAULT_ARTIFACTS_DIR
     report_preview: str = DEFAULT_REPORT_PREVIEW_PATH
     filter_debug_dir: str = DEFAULT_FILTER_DEBUG_DIR
+
