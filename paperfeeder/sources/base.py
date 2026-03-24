@@ -17,3 +17,4 @@ class BaseSource(ABC):
     async def fetch(self, **kwargs) -> List[Paper]:
         """Fetch papers from this source."""
         raise NotImplementedError
+
