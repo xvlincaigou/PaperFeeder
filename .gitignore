@@ -38,9 +38,9 @@ openspec/
 .wrangler/
 cloudflare/.wrangler/
 
-
-tests/
-tests/*.py
+# D1-backed semantic state is a local working mirror, not repository state.
+state/semantic/memory.json
+state/semantic/seeds.json
 
 # OS
 .DS_Store
@@ -48,7 +48,6 @@ Thumbs.db
 
 
 # Local debug sample override (tests/debug_sample.example.json is tracked)
-tests/
 tests/debug_sample.json
 debug_sample.json
 
