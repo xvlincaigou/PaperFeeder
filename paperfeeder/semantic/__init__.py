@@ -16,7 +16,7 @@ from .feedback import (
     reset_feedback_d1_state,
     verify_feedback_token,
 )
-from .memory import SemanticMemoryStore, memory_keys_for_paper
+from .memory import SemanticMemoryStore, memory_keys_for_paper, normalize_memory_url
 from .resolver import SemanticPaperResolver
 
 __all__ = [
@@ -35,6 +35,7 @@ __all__ = [
     "inject_feedback_entry_link",
     "make_email_safe_report_html",
     "memory_keys_for_paper",
+    "normalize_memory_url",
     "publish_feedback_run_to_d1",
     "queue_feedback_event",
     "reset_feedback_d1_state",

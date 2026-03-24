@@ -300,7 +300,7 @@ Critical requirements:
         persona_text = self._normalize_persona_text(
             self._extract_first_match(extracted_html, r'<div class="persona">(.*?)</div>')
         )
-        footer_text = self._extract_first_match(extracted_html, r'<div class="footer">(.*?)</div>')
+        footer_text = self._extract_footer_text(extracted_html)
         return self._render_wrapped_html(
             content=content,
             header_title=title_text,
@@ -584,6 +584,28 @@ Critical requirements:
         if body_match:
             return body_match.group(1).strip()
         return existing_html.strip()
+
+    @staticmethod
+    def _extract_footer_text(existing_html: str) -> str:
+        if not existing_html:
+            return ""
+        match = re.search(
+            r'<div class="footer">(.*?)</div>\s*</div>\s*</body>',
+            existing_html,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if not match:
+            return ""
+        footer_html = match.group(1)
+        footer_html = re.sub(
+            r'<div class="footer-note">.*?</div>',
+            "",
+            footer_html,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        footer_text = re.sub(r'<[^>]+>', ' ', footer_html)
+        footer_text = html.unescape(re.sub(r'\s+', ' ', footer_text)).strip()
+        return footer_text
 
     @staticmethod
     def _extract_report_payload_html(existing_html: str) -> str:

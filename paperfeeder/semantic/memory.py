@@ -7,7 +7,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Set
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+
+SIGNIFICANT_QUERY_KEYS = {"id", "paperid"}
 
 
 def _utcnow() -> datetime:
@@ -66,17 +69,38 @@ def normalize_url(url: str) -> str:
         return url.strip().lower().rstrip("/")
 
 
+def normalize_memory_url(url: str) -> str:
+    if not url:
+        return ""
+    try:
+        parts = urlsplit(url.strip())
+        scheme = parts.scheme.lower() if parts.scheme else "https"
+        netloc = parts.netloc.lower()
+        path = parts.path.rstrip("/")
+        kept_pairs = [
+            (key, value)
+            for key, value in parse_qsl(parts.query, keep_blank_values=True)
+            if key.lower() in SIGNIFICANT_QUERY_KEYS and value
+        ]
+        query = urlencode(sorted(kept_pairs), doseq=True)
+        return urlunsplit((scheme, netloc, path, query, ""))
+    except Exception:
+        return normalize_url(url)
+
+
 def memory_keys_for_paper(paper: Any) -> Set[str]:
     out: Set[str] = set()
     semantic_id = normalize_semantic_id(getattr(paper, "semantic_paper_id", ""))
     arxiv_id = normalize_arxiv_id(getattr(paper, "arxiv_id", ""))
     source = str(getattr(getattr(paper, "source", None), "value", "")).strip().lower()
-    url = normalize_url(getattr(paper, "url", ""))
+    url = normalize_memory_url(getattr(paper, "url", ""))
     if arxiv_id:
         out.add(f"arxiv:{arxiv_id}")
     if semantic_id:
         out.add(f"semantic:{semantic_id}")
         out.add(semantic_id)
+    if url:
+        out.add(f"url:{url}")
     if source == "huggingface" and not arxiv_id and url:
         out.add(f"hf:{url}")
     if source == "arxiv" and not arxiv_id and url:

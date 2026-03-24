@@ -10,6 +10,7 @@ physics
 neuroscience
 3D
 4D
+video
 video generation
 video understanding
 audio

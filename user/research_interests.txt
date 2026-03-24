@@ -10,12 +10,13 @@ Specific interests:
 - Reasoning, chain-of-thought, latent reasoning, formal reasoning
 - Test-time compute, inference scaling, test-time training, adaptation
 - Mechanistic interpretability, AI safety, alignment, scalable oversight
-- Data-centric methods that improve reasoning or verification quality
 - Self-play or self-improvement loops with real methodological substance
+- Multimodal learning when it changes the core reasoning or representation story
 
 Instant pass:
 - Small incremental SOTA gains without a real idea
 - Prompt-only tricks presented as research
 - Narrow domain applications without a general method
+- Engineering-heavy work without a general insight
 - Resource dumps with little analysis
 - Bio, medical, or physics applications unless they introduce a broadly useful ML advance

@@ -16,6 +16,7 @@ from paperfeeder.semantic.memory import (
     SemanticMemoryStore,
     memory_keys_for_paper,
     normalize_arxiv_id,
+    normalize_memory_url,
     normalize_semantic_id,
 )
 from paperfeeder.sources.paper_sources import SemanticScholarSource
@@ -27,6 +28,10 @@ class MemoryKeyHelpersTests(unittest.TestCase):
         self.assertEqual(normalize_semantic_id("CorpusId:123"), "CorpusId:123")
         self.assertEqual(normalize_arxiv_id("arXiv:2501.00001"), "2501.00001")
         self.assertEqual(normalize_arxiv_id("2501.00001V2"), "2501.00001v2")
+        self.assertEqual(
+            normalize_memory_url("https://openreview.net/forum?id=test123&utm_source=x"),
+            "https://openreview.net/forum?id=test123",
+        )
 
     def test_memory_key_generation_prefers_arxiv_with_semantic_dual_write(self):
         paper = Paper(
@@ -50,7 +55,17 @@ class MemoryKeyHelpersTests(unittest.TestCase):
             source=PaperSource.HUGGINGFACE,
         )
         keys = memory_keys_for_paper(paper)
-        self.assertEqual(keys, {"hf:https://huggingface.co/papers/abc"})
+        self.assertEqual(keys, {"hf:https://huggingface.co/papers/abc", "url:https://huggingface.co/papers/abc"})
+
+    def test_openreview_without_semantic_id_uses_generic_url_key(self):
+        paper = Paper(
+            title="OR",
+            abstract="",
+            url="https://openreview.net/forum?id=test123&utm_source=x",
+            source=PaperSource.OPENREVIEW,
+        )
+        keys = memory_keys_for_paper(paper)
+        self.assertEqual(keys, {"url:https://openreview.net/forum?id=test123"})
 
 
 class SemanticMemoryStoreTests(unittest.TestCase):
@@ -211,6 +226,30 @@ class ReportMemoryUpdateTests(unittest.TestCase):
             self.assertTrue(store.recently_seen("CorpusId:123", ttl_days=30))
             self.assertFalse(store.recently_seen("hf:https://huggingface.co/papers/demo", ttl_days=30))
 
+    def test_update_memory_marks_report_visible_openreview_by_url(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            mem_path = Path(tmpdir) / "memory.json"
+            store = SemanticMemoryStore(str(mem_path), max_ids=100)
+            store.load()
+            cfg = SimpleNamespace(
+                semantic_memory_enabled=True,
+                semantic_seen_ttl_days=30,
+                _semantic_memory_store=store,
+            )
+            final_papers = [
+                Paper(
+                    title="OR",
+                    abstract="",
+                    url="https://openreview.net/forum?id=test123",
+                    source=PaperSource.OPENREVIEW,
+                )
+            ]
+            report_html = """
+            <a href="https://openreview.net/forum?id=test123&utm_source=digest">paper</a>
+            """
+            update_semantic_memory_from_report(final_papers, report_html, cfg)
+            self.assertTrue(store.recently_seen("url:https://openreview.net/forum?id=test123", ttl_days=30))
+
 
 class ReportMatchTests(unittest.TestCase):
     def test_extract_report_urls_and_normalize(self):
@@ -226,6 +265,10 @@ class ReportMatchTests(unittest.TestCase):
         self.assertEqual(
             _normalize_url_for_match("HTTPS://EXAMPLE.com/path/?x=1#frag"),
             "https://example.com/path",
+        )
+        self.assertEqual(
+            _normalize_url_for_match("https://openreview.net/forum?id=test123&utm_source=x"),
+            "https://openreview.net/forum?id=test123",
         )
 
 

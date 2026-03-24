@@ -19,6 +19,7 @@ from paperfeeder.semantic import (
     inject_feedback_actions_into_report,
     make_email_safe_report_html,
     memory_keys_for_paper,
+    normalize_memory_url,
     publish_feedback_run_to_d1,
 )
 
@@ -117,16 +118,7 @@ async def fetch_papers(config: Config, days_back: int = 1) -> List[Paper]:
 
 
 def _normalize_url_for_match(url: str) -> str:
-    if not url:
-        return ""
-    try:
-        parts = urlsplit(url.strip())
-        scheme = parts.scheme.lower() if parts.scheme else "https"
-        netloc = parts.netloc.lower()
-        path = parts.path.rstrip("/")
-        return urlunsplit((scheme, netloc, path, "", ""))
-    except Exception:
-        return url.strip().lower().rstrip("/")
+    return normalize_memory_url(url)
 
 
 def _extract_report_urls(report_html: str) -> set[str]:
@@ -153,7 +145,7 @@ def update_semantic_memory_from_report(final_papers: List[Paper], report_html: s
         paper
         for paper in final_papers
         if getattr(paper, "source", None)
-        in {PaperSource.SEMANTIC_SCHOLAR, PaperSource.ARXIV, PaperSource.HUGGINGFACE}
+        in {PaperSource.SEMANTIC_SCHOLAR, PaperSource.ARXIV, PaperSource.HUGGINGFACE, PaperSource.OPENREVIEW}
     ]
     if not final_memory_candidates:
         print("   Semantic memory: no final papers eligible for memory")
