@@ -144,3 +144,4 @@ class MockPaperResearcher:
             await asyncio.sleep(0.1)
         print("   Mock research complete")
         return papers
+

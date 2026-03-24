@@ -202,3 +202,4 @@ def normalize_prompt_language(value: str | None) -> str:
 
 def get_summary_language_pack(value: str | None) -> SummaryLanguagePack:
     return LANGUAGE_PACKS[normalize_prompt_language(value)]
+

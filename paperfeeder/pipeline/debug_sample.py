@@ -158,3 +158,4 @@ def build_minimal_digest_html(papers: List[Paper], *, label: str = "DEBUG SAMPLE
     </div>
 </body>
 </html>"""
+

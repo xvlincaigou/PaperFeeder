@@ -280,3 +280,4 @@ Return only the JSON array, no other text."""
 
     def _fallback_scoring(self, papers: List[Paper]) -> List[Paper]:
         return sorted(papers, key=lambda paper: getattr(paper, "relevance_score", 0), reverse=True)
+
