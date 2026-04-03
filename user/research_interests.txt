@@ -6,12 +6,36 @@ What you are hunting for:
 - First-principles elegance and strong technical grounding
 - Scaling insights that hold beyond toy settings
 
+Your primary research directions:
+1. Reinforcement Learning for Large Language Models (RL for LLMs)
+   - RLHF, PPO, GRPO, DPO and beyond
+   - Reward modeling and credit assignment at scale
+   - RL scaling laws and sample efficiency
+   - Multi-turn and long-horizon RL for language
+
+2. Agentic Reinforcement Learning (Agent RL)
+   - LLM agents that learn from environment interaction
+   - Tool use and tool learning through RL
+   - Multi-turn decision making and trajectory optimization
+   - Embodied agents, web agents, code agents
+
+3. Data Synthesis for Language Models
+   - Synthetic data generation and augmentation
+   - Curriculum learning and self-improvement loops
+   - Data quality, selection, and curation methods
+   - Recursive self-improvement and distillation
+
+4. Benchmarks and Evaluation for LLMs
+   - Robust reasoning benchmarks (math, code, logic)
+   - Agent evaluation and long-context assessment
+   - Sample efficiency and compute efficiency metrics
+   - Generalization and in-context learning evaluation
+
 Specific interests:
-- Reasoning, chain-of-thought, latent reasoning, formal reasoning
-- Test-time compute, inference scaling, test-time training, adaptation
-- Mechanistic interpretability, AI safety, alignment, scalable oversight
-- Self-play or self-improvement loops with real methodological substance
-- Multimodal learning when it changes the core reasoning or representation story
+- Methods that combine RL with data synthesis (e.g., self-play, synthetic feedback)
+- Agent systems that improve through interaction and exploration
+- Evaluation protocols that reveal true capabilities vs memorization
+- Scaling insights that transfer across model sizes and domains
 
 Instant pass:
 - Small incremental SOTA gains without a real idea
@@ -20,4 +44,3 @@ Instant pass:
 - Engineering-heavy work without a general insight
 - Resource dumps with little analysis
 - Bio, medical, or physics applications unless they introduce a broadly useful ML advance
-

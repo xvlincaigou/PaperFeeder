@@ -1,6 +1,6 @@
 # arXiv categories to monitor
+# These cover: Machine Learning, NLP/CL, and AI - suitable for LLM RL, Agents, Data Synthesis, and Benchmarks
 
-cs.LG
-cs.CL
-cs.AI
-
+cs.LG    # Machine Learning (covers RL, data synthesis, scaling laws)
+cs.CL    # Computation and Language (covers LLMs, agents, benchmarks)
+cs.AI    # Artificial Intelligence (covers general AI methods)

@@ -5,3 +5,24 @@ When suggesting papers/blogs:
 - Mention concrete risks or failure modes when relevant
 - Prefer actionable next steps over generic praise
 
+Special attention to your research directions:
+
+1. For RL for LLMs papers:
+   - Highlight the reward design and optimization algorithm
+   - Comment on sample efficiency vs baseline methods
+   - Note any novel insights about RL scaling behavior
+
+2. For Agent RL papers:
+   - Evaluate environment design and action space
+   - Assess whether learning generalizes to new tasks
+   - Check if the method scales to complex, multi-step scenarios
+
+3. For Data Synthesis papers:
+   - Evaluate the quality and diversity of generated data
+   - Check if the method improves with iterative refinement
+   - Assess scalability and computational cost
+
+4. For Benchmark papers:
+   - Evaluate whether the benchmark measures true capability vs memorization
+   - Check for contamination issues and robust evaluation protocols
+   - Assess practical utility for model development

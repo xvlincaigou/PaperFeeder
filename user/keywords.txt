@@ -1,24 +1,59 @@
 # Active keyword profile for this workspace.
 # One keyword per line. Blank lines and # comments are ignored.
 
-Reasoning
-hierarchical reasoning
-mathematical reasoning
+# 大语言模型强化学习
+reinforcement learning
+RL for LLMs
+RL scaling
+
+# 大语言模型智能体强化学习
+agentic reinforcement learning
+LLM agent
+agent RL
+tool learning
+tool use
+multi-turn RL
+environment interaction
+web agents
+code agent
+trajectory optimization
+
+# 大语言模型数据合成
+data synthesis
+synthetic data
+data generation
+data augmentation
+curriculum learning
+self-improvement
+self-play
+recursive self-improvement
+data quality
+data selection
+data curation
+distillation
+knowledge distillation
+
+# 大语言模型 benchmark
+evaluation
+benchmark
+reasoning benchmark
+math benchmark
+code benchmark
+agent benchmark
+long-context benchmark
+in-context learning
+generalization
+sample efficiency
+compute efficiency
+
+# 相关技术方向
+reasoning
 chain of thought
-latent reasoning
-mechanistic interpretability
 test-time compute
 inference scaling
-test time training
-verifiable coding agent
-AI safety
-alignment
-self-evolution
-self-play
+scaling law
+foundation model
+large language model
 LLM
-Large Language Model
-Scaling Law
-Foundation Model
-Multimodal
-Multi-modal
+mechanistic interpretability
 

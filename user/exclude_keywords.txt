@@ -25,10 +25,6 @@ compiler
 inference engine
 
 # Blog commercial/product noise
-product announcement
-announcement
-launch
-release notes
 pricing
 enterprise
 customer story
