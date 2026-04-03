@@ -83,6 +83,14 @@ class Config:
     email_to: str = ""
     email_from: str = "paperfeeder@resend.dev"
 
+    # SMTP configuration (for 126邮箱, Gmail, etc.)
+    email_provider: str = "resend"  # "resend" or "smtp"
+    smtp_host: str = ""
+    smtp_port: int = 465
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
+
     arxiv_categories: list[str] = field(default_factory=lambda: ["cs.LG", "cs.CL"])
     keywords: list[str] = field(
         default_factory=lambda: [
@@ -182,6 +190,12 @@ class Config:
             "llm_filter_model": os.getenv("LLM_FILTER_MODEL"),
             "resend_api_key": os.getenv("RESEND_API_KEY"),
             "email_to": os.getenv("EMAIL_TO"),
+            "email_provider": os.getenv("EMAIL_PROVIDER"),
+            "smtp_host": os.getenv("SMTP_HOST"),
+            "smtp_port": os.getenv("SMTP_PORT"),
+            "smtp_username": os.getenv("SMTP_USERNAME"),
+            "smtp_password": os.getenv("SMTP_PASSWORD"),
+            "smtp_use_tls": os.getenv("SMTP_USE_TLS"),
             "tavily_api_key": os.getenv("TAVILY_API_KEY"),
             "cloudflare_account_id": os.getenv("CLOUDFLARE_ACCOUNT_ID"),
             "cloudflare_api_token": os.getenv("CLOUDFLARE_API_TOKEN"),
@@ -231,6 +245,7 @@ class Config:
                 "feedback_resolution_enabled",
                 "feedback_resolution_run_cache_enabled",
                 "feedback_web_viewer_link_in_email",
+                "smtp_use_tls",
             ):
                 config_data[key] = value.lower() not in ("false", "0", "no", "off")
             elif key in (
@@ -244,6 +259,7 @@ class Config:
                 "feedback_resolution_max_lookups",
                 "feedback_resolution_no_key_max_lookups",
                 "feedback_resolution_time_budget_sec",
+                "smtp_port",
             ):
                 try:
                     config_data[key] = int(value)
@@ -324,6 +340,12 @@ class Config:
             "llm_model": self.llm_model,
             "email_to": self.email_to,
             "email_from": self.email_from,
+            "email_provider": self.email_provider,
+            "smtp_host": self.smtp_host,
+            "smtp_port": self.smtp_port,
+            "smtp_username": self.smtp_username,
+            "smtp_password": self.smtp_password,
+            "smtp_use_tls": self.smtp_use_tls,
             "arxiv_categories": self.arxiv_categories,
             "keywords": self.keywords,
             "exclude_keywords": self.exclude_keywords,

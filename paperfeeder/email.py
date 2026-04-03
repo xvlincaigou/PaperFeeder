@@ -1,10 +1,16 @@
 """
-Send digest email via Resend, SendGrid, console, or file preview.
+Send digest email via Resend, SendGrid, SMTP, console, or file preview.
 """
 
 from __future__ import annotations
 
+import base64
+import smtplib
+import ssl
 from abc import ABC, abstractmethod
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Optional
 
 import aiohttp
@@ -105,6 +111,91 @@ class SendGridEmailer(BaseEmailer):
                 error = await response.text()
                 print(f"SendGrid error: {response.status} - {error}")
                 return False
+
+
+class SmtpEmailer(BaseEmailer):
+    """Send email via SMTP (e.g., 126邮箱, Gmail, etc.)"""
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        from_email: str,
+        use_tls: bool = True,
+    ):
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.from_email = from_email
+        self.use_tls = use_tls
+
+    async def send(
+        self,
+        to: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+        attachments: Optional[list[dict]] = None,
+    ) -> bool:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["From"] = self.from_email
+            msg["To"] = to
+            msg["Subject"] = subject
+
+            # Add plain text part if provided
+            if text_content:
+                msg.attach(MIMEText(text_content, "plain", "utf-8"))
+
+            # Add HTML part
+            msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+            # Handle attachments
+            if attachments:
+                # Convert to multipart/mixed to support attachments
+                mixed_msg = MIMEMultipart("mixed")
+                mixed_msg["From"] = self.from_email
+                mixed_msg["To"] = to
+                mixed_msg["Subject"] = subject
+                mixed_msg.attach(msg)
+
+                for attachment in attachments:
+                    part = MIMEBase(
+                        "application",
+                        attachment.get("content_type", "octet-stream").split("/")[-1],
+                    )
+                    content = attachment.get("content", "")
+                    if isinstance(content, str):
+                        content = base64.b64decode(content)
+                    part.set_payload(content)
+                    base64.encode_base64(part)
+                    part.add_header(
+                        "Content-Disposition",
+                        f'attachment; filename="{attachment.get("filename", "attachment.bin")}"',
+                    )
+                    mixed_msg.attach(part)
+
+                msg = mixed_msg
+
+            # Send via SMTP
+            context = ssl.create_default_context()
+            if self.use_tls:
+                with smtplib.SMTP_SSL(self.host, self.port, context=context) as server:
+                    server.login(self.username, self.password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(self.host, self.port) as server:
+                    server.starttls(context=context)
+                    server.login(self.username, self.password)
+                    server.send_message(msg)
+
+            return True
+        except Exception as exc:
+            print(f"SMTP error: {exc}")
+            return False
 
 
 class ConsoleEmailer(BaseEmailer):

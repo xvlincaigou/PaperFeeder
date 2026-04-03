@@ -354,9 +354,27 @@ async def summarize_papers(
 
 
 async def send_email(report: str, config: Config, attachments: Optional[List[dict]] = None) -> bool:
-    from paperfeeder.email import ResendEmailer
+    from paperfeeder.email import ResendEmailer, SmtpEmailer
 
-    emailer = ResendEmailer(api_key=config.resend_api_key, from_email=config.email_from)
+    # Determine which email provider to use
+    email_provider = getattr(config, "email_provider", "resend").lower().strip()
+
+    if email_provider == "smtp":
+        # Use SMTP (e.g., 126邮箱)
+        emailer = SmtpEmailer(
+            host=getattr(config, "smtp_host", "smtp.126.com"),
+            port=getattr(config, "smtp_port", 465),
+            username=getattr(config, "smtp_username", ""),
+            password=getattr(config, "smtp_password", ""),
+            from_email=getattr(config, "email_from", config.email_to),
+            use_tls=getattr(config, "smtp_use_tls", True),
+        )
+        print(f"   Using SMTP: {config.smtp_host}:{config.smtp_port}")
+    else:
+        # Default to Resend
+        emailer = ResendEmailer(api_key=config.resend_api_key, from_email=config.email_from)
+        print("   Using Resend")
+
     today = datetime.now().strftime("%Y-%m-%d")
     subject = f"Daily Paper Digest - {today}"
     success = await emailer.send(

@@ -65,6 +65,13 @@ jobs:
           # Email
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          # SMTP Configuration (for 126邮箱, Gmail, etc.)
+          EMAIL_PROVIDER: ${{ vars.EMAIL_PROVIDER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           # Optional: Cloudflare D1
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
