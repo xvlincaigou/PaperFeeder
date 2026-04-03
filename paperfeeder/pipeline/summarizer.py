@@ -262,22 +262,56 @@ Critical requirements:
         prompts = self._build_prompt(actual_papers, papers_with_pdf, failed_pdf_papers, blog_posts=actual_blogs)
         messages = [{"role": "system", "content": prompts["system"]}]
 
-        user_content = []
-        for paper in papers_with_pdf:
-            if paper not in failed_pdf_papers and hasattr(paper, "_pdf_base64") and paper._pdf_base64:
-                user_content.append(
-                    {
-                        "type": "document",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "application/pdf",
-                            "data": paper._pdf_base64,
-                        },
-                        "cache_control": {"type": "ephemeral"},
-                    }
-                )
-        user_content.append({"type": "text", "text": prompts["user"]})
-        messages.append({"role": "user", "content": user_content})
+        # Build messages based on API type
+        is_anthropic = "anthropic.com" in (self.client.base_url or "")
+        supports_pdf_native = self.client.supports_pdf_native()
+
+        if is_anthropic:
+            # Anthropic API: use document type
+            user_content = []
+            for paper in papers_with_pdf:
+                if paper not in failed_pdf_papers and hasattr(paper, "_pdf_base64") and paper._pdf_base64:
+                    user_content.append(
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "application/pdf",
+                                "data": paper._pdf_base64,
+                            },
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    )
+            user_content.append({"type": "text", "text": prompts["user"]})
+            messages.append({"role": "user", "content": user_content})
+        elif supports_pdf_native:
+            # OpenAI-compatible API with PDF support (Gemini, etc.)
+            user_content = []
+            for paper in papers_with_pdf:
+                if paper not in failed_pdf_papers and hasattr(paper, "_pdf_base64") and paper._pdf_base64:
+                    user_content.append(
+                        {
+                            "type": "file",
+                            "file": {
+                                "filename": f"{getattr(paper, 'title', 'paper')[:30]}.pdf",
+                                "file_data": f"data:application/pdf;base64,{paper._pdf_base64}",
+                            },
+                        }
+                    )
+            user_content.append({"type": "text", "text": prompts["user"]})
+            messages.append({"role": "user", "content": user_content})
+        else:
+            # Standard OpenAI API: convert PDF to text
+            pdf_texts = []
+            for paper in papers_with_pdf:
+                if paper not in failed_pdf_papers and hasattr(paper, "_pdf_base64") and paper._pdf_base64:
+                    text = self.client._extract_pdf_text_from_base64(paper._pdf_base64)
+                    pdf_texts.append(f"--- {getattr(paper, 'title', 'Paper')} ---\n{text[:15000]}")
+
+            full_prompt = prompts["user"]
+            if pdf_texts:
+                full_prompt = f"{full_prompt}\n\n---\n\nPaper PDF contents:\n" + "\n\n".join(pdf_texts)
+            messages.append({"role": "user", "content": full_prompt})
 
         try:
             content = await self.client.achat(messages, max_tokens=8000)
