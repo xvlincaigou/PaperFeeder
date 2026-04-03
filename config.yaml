@@ -23,8 +23,8 @@ prompt_language: "zh-CN"
 
 # PDF handling
 extract_fulltext: true
-fulltext_top_n: 3
-pdf_max_pages: 15
+fulltext_top_n: 10
+pdf_max_pages: 3
 
 # Source toggles
 papers_enabled: true

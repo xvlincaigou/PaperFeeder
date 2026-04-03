@@ -349,6 +349,7 @@ async def summarize_papers(
         debug_save_pdfs=getattr(config, "debug_save_pdfs", False),
         debug_pdf_dir=getattr(config, "debug_pdf_dir", "debug_pdfs"),
         pdf_max_pages=getattr(config, "pdf_max_pages", 10),
+        fulltext_top_n=getattr(config, "fulltext_top_n", 3),
     )
     return await summarizer.generate_report(all_content, use_pdf_multimodal=config.extract_fulltext)
 
@@ -556,6 +557,7 @@ async def run_pipeline(
                         debug_save_pdfs=getattr(config, "debug_save_pdfs", False),
                         debug_pdf_dir=getattr(config, "debug_pdf_dir", "debug_pdfs"),
                         pdf_max_pages=getattr(config, "pdf_max_pages", 10),
+                        fulltext_top_n=getattr(config, "fulltext_top_n", 3),
                     )
                     email_report = make_email_safe_report_html(
                         email_summarizer.rewrap_existing_report_html(web_report)

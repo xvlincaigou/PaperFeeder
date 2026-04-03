@@ -27,6 +27,7 @@ class PaperSummarizer:
         debug_save_pdfs: bool = False,
         debug_pdf_dir: str = "debug_pdfs",
         pdf_max_pages: int = 10,
+        fulltext_top_n: int = 3,
     ):
         self.client = LLMClient(
             api_key=api_key,
@@ -36,6 +37,7 @@ class PaperSummarizer:
             debug_pdf_dir=debug_pdf_dir,
             pdf_max_pages=pdf_max_pages,
         )
+        self.fulltext_top_n = fulltext_top_n
         self.research_interests = research_interests
         self.prompt_addon = prompt_addon.strip()
         self.language_pack = get_summary_language_pack(prompt_language)
@@ -234,8 +236,10 @@ Critical requirements:
         papers_with_pdf = []
         failed_pdf_papers = []
         if use_pdf_multimodal and actual_papers:
-            print(f"   Processing {len(actual_papers)} PDFs individually...")
-            for i, paper in enumerate(actual_papers, 1):
+            # Only process top N papers with PDF to avoid 413 error
+            papers_to_process = actual_papers[:self.fulltext_top_n]
+            print(f"   Processing {len(papers_to_process)} PDFs individually (top {self.fulltext_top_n})...")
+            for i, paper in enumerate(papers_to_process, 1):
                 print(f"      [{i}/{len(actual_papers)}] {paper.title[:40]}...")
                 if not getattr(paper, "pdf_url", None):
                     failed_pdf_papers.append(paper)
