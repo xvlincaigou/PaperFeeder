@@ -361,12 +361,14 @@ async def send_email(report: str, config: Config, attachments: Optional[List[dic
 
     if email_provider == "smtp":
         # Use SMTP (e.g., 126邮箱)
+        # For SMTP, the from_email MUST match the authenticated username
+        smtp_username = getattr(config, "smtp_username", "")
         emailer = SmtpEmailer(
             host=getattr(config, "smtp_host", "smtp.126.com"),
             port=getattr(config, "smtp_port", 465),
-            username=getattr(config, "smtp_username", ""),
+            username=smtp_username,
             password=getattr(config, "smtp_password", ""),
-            from_email=getattr(config, "email_from", config.email_to),
+            from_email=smtp_username,  # SMTP requires from_email == username
             use_tls=getattr(config, "smtp_use_tls", True),
         )
         print(f"   Using SMTP: {config.smtp_host}:{config.smtp_port}")
